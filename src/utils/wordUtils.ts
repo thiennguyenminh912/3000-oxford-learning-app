@@ -16,7 +16,7 @@ export interface ProcessedData {
 }
 
 // Extract levels A1, A2, B1, B2, C1 from word data if available
-const extractLevelsFromData = (wordList: WordData[]): string[] => {
+const extractLevelsFromData = (): string[] => {
   const levels = new Set<string>();
 
   // Mock levels for demonstration, in a real app these would come from the data
@@ -31,7 +31,7 @@ const extractLevelsFromData = (wordList: WordData[]): string[] => {
 };
 
 // Extract categories from word data if available
-const extractCategoriesFromData = (wordList: WordData[]): string[] => {
+const extractCategoriesFromData = (): string[] => {
   const categories = new Set<string>();
 
   // Mock categories for demonstration
@@ -59,8 +59,8 @@ export const processWordData = (): ProcessedData => {
       category: assignRandomCategory(), // Mock function for demonstration
     }));
 
-    const levels = extractLevelsFromData(enhancedWords);
-    const categories = extractCategoriesFromData(enhancedWords);
+    const levels = extractLevelsFromData();
+    const categories = extractCategoriesFromData();
 
     return {
       words: enhancedWords,

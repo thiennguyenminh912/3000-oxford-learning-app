@@ -31,9 +31,11 @@ export const useSpeechRecognition = () => {
     ) => {
       if (!isSupported) return;
 
-      // @ts-ignore - Xử lý khác biệt giữa các trình duyệt
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).SpeechRecognition ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
 
       recognition.lang = "en-GB";

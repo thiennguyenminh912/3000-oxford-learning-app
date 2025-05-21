@@ -2,66 +2,13 @@ import { useWordStore } from "../store/wordStore";
 import { useMemo } from "react";
 
 export const ProgressPage = () => {
-  const { words, levels, categories, resetProgress, getCompletionStats } =
-    useWordStore();
+  const { resetProgress, getCompletionStats } = useWordStore();
 
   const stats = getCompletionStats();
   const notStarted = useMemo(
     () => stats.total - stats.completed - stats.inProgress,
     [stats]
   );
-
-  const levelStats = useMemo(() => {
-    return levels.map((level) => {
-      const levelWords = words.filter((word) => word.level === level);
-      const total = levelWords.length;
-      const completed = levelWords.filter((w) => w.status === "known").length;
-      const inProgress = levelWords.filter(
-        (w) => w.status === "learning"
-      ).length;
-      const notStarted = levelWords.filter(
-        (w) => w.status === "new" || !w.status
-      ).length;
-      const percentComplete =
-        total > 0 ? Math.round((completed / total) * 100) : 0;
-
-      return {
-        level,
-        total,
-        completed,
-        inProgress,
-        notStarted,
-        percentComplete,
-      };
-    });
-  }, [words, levels]);
-
-  const categoryStats = useMemo(() => {
-    return categories.map((category) => {
-      const categoryWords = words.filter((word) => word.category === category);
-      const total = categoryWords.length;
-      const completed = categoryWords.filter(
-        (w) => w.status === "known"
-      ).length;
-      const inProgress = categoryWords.filter(
-        (w) => w.status === "learning"
-      ).length;
-      const notStarted = categoryWords.filter(
-        (w) => w.status === "new" || !w.status
-      ).length;
-      const percentComplete =
-        total > 0 ? Math.round((completed / total) * 100) : 0;
-
-      return {
-        category,
-        total,
-        completed,
-        inProgress,
-        notStarted,
-        percentComplete,
-      };
-    });
-  }, [words, categories]);
 
   const handleResetProgress = () => {
     if (

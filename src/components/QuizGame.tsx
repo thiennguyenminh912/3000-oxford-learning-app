@@ -14,8 +14,6 @@ interface QuizGameProps {
 
 export const QuizGame: React.FC<QuizGameProps> = ({
   word,
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  alternatives,
   onComplete,
   onSkip,
 }) => {

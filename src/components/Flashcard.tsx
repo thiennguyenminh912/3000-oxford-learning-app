@@ -6,6 +6,9 @@ import { getWordDefinition } from "../services/apiService";
 import type { WordDefinition } from "../services/apiService";
 import { useWordStore } from "../store/wordStore";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MotionDiv = motion.div as any;
+
 interface FlashcardProps {
   word: WordData;
   onComplete: () => void;
@@ -104,7 +107,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
       <div className="w-full aspect-[3/2] relative">
-        <motion.div
+        <MotionDiv
           className="absolute inset-0 w-full h-full rounded-xl"
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ duration: 0.6 }}
@@ -112,7 +115,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           style={{ transformStyle: "preserve-3d" }}
         >
           {/* Front of card - Word */}
-          <motion.div
+          <MotionDiv
             className="absolute inset-0 p-8 bg-white rounded-xl shadow-lg flex flex-col items-center justify-center"
             style={{ backfaceVisibility: "hidden" }}
             animate={{ opacity: isFlipped ? 0 : 1 }}
@@ -153,11 +156,13 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </span>
               )}
             </div>
-          </motion.div>
+          </MotionDiv>
 
           {/* Back of card - Definition */}
-          <motion.div
-            className="absolute inset-0 p-8 bg-white rounded-xl shadow-lg flex flex-col items-center justify-center"
+          <MotionDiv
+            className={
+              "absolute inset-0 p-8 bg-white rounded-xl shadow-lg flex flex-col items-center justify-center"
+            }
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
@@ -204,8 +209,8 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </div>
               </>
             )}
-          </motion.div>
-        </motion.div>
+          </MotionDiv>
+        </MotionDiv>
       </div>
 
       <div className="flex gap-3 mt-4 w-full">
