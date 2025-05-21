@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write  # ✅ cho phép push lên nhánh gh-pages
+  contents: write  # ✅ cần cho phép push vào repo
 
 jobs:
   build-and-deploy:
@@ -27,11 +27,7 @@ jobs:
       - name: Build project
         run: yarn build
 
-      - name: Deploy using gh-pages
+      - name: Deploy using gh-pages with token
         env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
-        run: |
-          yarn deploy
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: yarn deploy
