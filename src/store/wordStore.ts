@@ -14,6 +14,7 @@ interface WordStore {
   definitionCache: Record<string, WordDefinition>;
   quizCache: Record<string, QuizQuestion>;
   isDataLoaded: boolean;
+  reviewQueue: string[]; // Queue of words to review later
 
   // Actions
   loadWords: () => void;
@@ -36,6 +37,8 @@ interface WordStore {
     inProgress: number;
     percentComplete: number;
   };
+  getSmartLearningWords: (sessionLength: number) => WordData[];
+  addToReviewQueue: (wordId: string) => void;
   cacheDefinition: (word: string, definition: WordDefinition) => void;
   getCachedDefinition: (word: string) => WordDefinition | undefined;
   cacheQuizQuestion: (word: string, quiz: QuizQuestion) => void;
@@ -54,6 +57,7 @@ export const useWordStore = create<WordStore>()(
       definitionCache: {},
       quizCache: {},
       isDataLoaded: false,
+      reviewQueue: [],
 
       loadWords: () => {
         if (get().words.length === 0) {
@@ -84,6 +88,11 @@ export const useWordStore = create<WordStore>()(
               : word
           ),
         }));
+
+        // Nếu từ chưa thuộc, thêm vào hàng đợi ôn tập
+        if (status === "learning") {
+          get().addToReviewQueue(wordId);
+        }
       },
 
       incrementEncounters: (wordId) => {
@@ -110,6 +119,24 @@ export const useWordStore = create<WordStore>()(
 
           return { words: updatedWords };
         });
+
+        // Thêm từ vào hàng đợi ôn tập nếu người dùng vẫn chưa thuộc
+        const word = get().words.find((w) => w.word === wordId);
+        if (word && (word.encounters || 0) < 22) {
+          get().addToReviewQueue(wordId);
+        }
+      },
+
+      addToReviewQueue: (wordId) => {
+        set((state) => {
+          // Loại bỏ từ khỏi queue nếu đã tồn tại
+          const filteredQueue = state.reviewQueue.filter((id) => id !== wordId);
+
+          // Thêm từ vào cuối hàng đợi
+          return {
+            reviewQueue: [...filteredQueue, wordId],
+          };
+        });
       },
 
       resetProgress: () => {
@@ -122,6 +149,7 @@ export const useWordStore = create<WordStore>()(
           })),
           definitionCache: {},
           quizCache: {},
+          reviewQueue: [], // Reset review queue
         }));
       },
 
@@ -137,6 +165,107 @@ export const useWordStore = create<WordStore>()(
             !word.word.toLowerCase().includes(searchTerm.toLowerCase());
           return levelMatch && categoryMatch && !searchMatch;
         });
+      },
+
+      // Triển khai thuật toán thông minh chọn từ
+      getSmartLearningWords: (sessionLength) => {
+        const { words, selectedLevel, selectedCategory, reviewQueue } = get();
+
+        // Lọc danh sách từ theo level và category nếu đã chọn
+        const filteredWords = words.filter((word) => {
+          const levelMatch = !selectedLevel || word.level === selectedLevel;
+          const categoryMatch =
+            !selectedCategory || word.category === selectedCategory;
+          return levelMatch && categoryMatch;
+        });
+
+        // Chia thành các nhóm: từ mới, từ cần ôn tập, từ đã biết
+        const newWords = filteredWords.filter(
+          (w) => w.status === "new" || !w.status
+        );
+        const learningWords = filteredWords.filter(
+          (w) => w.status === "learning"
+        );
+
+        // Tìm những từ cần ôn tập trong hàng đợi
+        const reviewWords = reviewQueue
+          .map((wordId) => filteredWords.find((w) => w.word === wordId))
+          .filter((word): word is WordData => !!word && word.status !== "known")
+          // Sắp xếp theo thời gian, ưu tiên từ chưa xem lâu nhất
+          .sort((a, b) => {
+            const aTime = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+            const bTime = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+            return aTime - bTime;
+          });
+
+        // Tạo danh sách từ cho phiên học này
+        const sessionWords: WordData[] = [];
+
+        // Tính tỉ lệ: 60% từ mới, 40% từ ôn tập
+        const newWordsCount = Math.ceil(sessionLength * 0.6);
+        const reviewWordsCount = sessionLength - newWordsCount;
+
+        // Thêm từ mới vào, chọn ngẫu nhiên
+        const shuffledNewWords = [...newWords].sort(() => Math.random() - 0.5);
+        for (
+          let i = 0;
+          i < Math.min(newWordsCount, shuffledNewWords.length);
+          i++
+        ) {
+          sessionWords.push(shuffledNewWords[i]);
+        }
+
+        // Thêm từ cần ôn tập vào
+        let remainingReviewSlots = reviewWordsCount;
+
+        // Trước tiên lấy từ trong review queue
+        for (
+          let i = 0;
+          i < Math.min(remainingReviewSlots, reviewWords.length);
+          i++
+        ) {
+          if (!sessionWords.some((word) => word.word === reviewWords[i].word)) {
+            sessionWords.push(reviewWords[i]);
+            remainingReviewSlots--;
+          }
+        }
+
+        // Sau đó lấy từ những từ đang học nếu còn slot
+        if (remainingReviewSlots > 0) {
+          const shuffledLearningWords = [...learningWords]
+            .filter((word) => !sessionWords.some((w) => w.word === word.word))
+            .sort(() => Math.random() - 0.5);
+
+          for (
+            let i = 0;
+            i < Math.min(remainingReviewSlots, shuffledLearningWords.length);
+            i++
+          ) {
+            sessionWords.push(shuffledLearningWords[i]);
+          }
+        }
+
+        // Nếu vẫn chưa đủ, bổ sung thêm từ mới
+        if (sessionWords.length < sessionLength) {
+          const remainingNewWords = shuffledNewWords.filter(
+            (word) => !sessionWords.some((w) => w.word === word.word)
+          );
+
+          for (
+            let i = 0;
+            i <
+            Math.min(
+              sessionLength - sessionWords.length,
+              remainingNewWords.length
+            );
+            i++
+          ) {
+            sessionWords.push(remainingNewWords[i]);
+          }
+        }
+
+        // Shuffle lại toàn bộ danh sách từ để không học theo thứ tự cố định
+        return sessionWords.sort(() => Math.random() - 0.5);
       },
 
       getWordStats: () => {
@@ -211,6 +340,7 @@ export const useWordStore = create<WordStore>()(
         quizCache: state.quizCache,
         levels: state.levels,
         categories: state.categories,
+        reviewQueue: state.reviewQueue,
       }),
     }
   )

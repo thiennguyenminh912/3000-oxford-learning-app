@@ -16,8 +16,10 @@ type LearningMode = "flashcard" | "quiz" | "spelling" | "pronunciation";
 export const LearnPage = () => {
   const {
     getFilteredWords,
+    getSmartLearningWords,
     incrementEncounters,
     updateWordStatus,
+    addToReviewQueue,
     selectedLevel,
     selectedCategory,
   } = useWordStore();
@@ -28,25 +30,44 @@ export const LearnPage = () => {
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [sessionLength, setSessionLength] = useState(10);
   const [isPreloading, setIsPreloading] = useState(false);
+  const [useSmart, setUseSmart] = useState(true); // Mặc định sử dụng chế độ thông minh
   const previousWordIndexRef = useRef<number>(0);
   const previousModeRef = useRef<LearningMode>("flashcard");
   const lastSpeakTimeRef = useRef<number>(0);
   const { speakWord, stopSpeaking } = useVoices();
 
+  // Cập nhật danh sách từ khi thay đổi bộ lọc hoặc độ dài phiên học
   useEffect(() => {
-    const words = getFilteredWords()
-      .filter((word) => word.status !== "known" && word.status !== "skipped")
-      .sort((a, b) => {
-        // Prioritize words with fewer encounters
-        const aEncounters = a.encounters || 0;
-        const bEncounters = b.encounters || 0;
-        return aEncounters - bEncounters;
-      });
+    if (useSmart) {
+      // Sử dụng thuật toán thông minh
+      const smartWords = getSmartLearningWords(sessionLength);
+      console.log("Smart learning mode: loaded", smartWords.length, "words");
+      setAvailableWords(smartWords);
+    } else {
+      // Sử dụng chế độ cũ
+      const words = getFilteredWords()
+        .filter((word) => word.status !== "known" && word.status !== "skipped")
+        .sort((a, b) => {
+          // Prioritize words with fewer encounters
+          const aEncounters = a.encounters || 0;
+          const bEncounters = b.encounters || 0;
+          return aEncounters - bEncounters;
+        });
 
-    setAvailableWords(words);
+      setAvailableWords(words);
+    }
+
+    // Reset về từ đầu tiên khi thay đổi danh sách
     setCurrentWordIndex(0);
     setSessionCompleted(false);
-  }, [getFilteredWords, selectedLevel, selectedCategory]);
+  }, [
+    getFilteredWords,
+    getSmartLearningWords,
+    sessionLength,
+    selectedLevel,
+    selectedCategory,
+    useSmart,
+  ]);
 
   // Tự động đọc từ mới khi chuyển từ
   useEffect(() => {
@@ -129,6 +150,10 @@ export const LearnPage = () => {
     setSessionLength(Number(e.target.value));
   };
 
+  const toggleLearningMode = () => {
+    setUseSmart((prev) => !prev);
+  };
+
   const handleModeChange = (mode: LearningMode) => {
     // Chỉ cập nhật nếu mode thay đổi
     if (mode !== learningMode) {
@@ -199,6 +224,11 @@ export const LearnPage = () => {
 
     if (currentWord) {
       incrementEncounters(currentWord.word);
+
+      // Thêm vào hàng đợi ôn tập
+      if (currentWord.status !== "known") {
+        addToReviewQueue(currentWord.word);
+      }
     }
 
     // Move to next word or end session
@@ -244,6 +274,7 @@ export const LearnPage = () => {
 
     if (currentWord) {
       updateWordStatus(currentWord.word, "known");
+      // Nếu đánh dấu là đã biết, không cần thêm vào hàng đợi ôn tập
     }
 
     // Move to next word or end session
@@ -257,6 +288,15 @@ export const LearnPage = () => {
   };
 
   const handleWordSkip = () => {
+    const currentWord = availableWords[currentWordIndex];
+
+    if (currentWord) {
+      // Bỏ qua từ này, nhưng có thể cần ôn tập lại sau
+      updateWordStatus(currentWord.word, "skipped");
+      // Thêm vào hàng đợi ôn tập để hiển thị lại sau
+      addToReviewQueue(currentWord.word);
+    }
+
     // Just move to the next word without incrementing
     if (
       currentWordIndex < Math.min(sessionLength - 1, availableWords.length - 1)
@@ -270,6 +310,17 @@ export const LearnPage = () => {
   const startNewSession = () => {
     setCurrentWordIndex(0);
     setSessionCompleted(false);
+
+    // Khi bắt đầu phiên mới, cập nhật lại danh sách từ
+    if (useSmart) {
+      const smartWords = getSmartLearningWords(sessionLength);
+      console.log(
+        "Starting new session with",
+        smartWords.length,
+        "smart-selected words"
+      );
+      setAvailableWords(smartWords);
+    }
   };
 
   // Get alternatives for quiz mode
@@ -338,10 +389,55 @@ export const LearnPage = () => {
     }
   };
 
+  const renderCompletedSession = () => {
+    const knownStatus = availableWords.reduce(
+      (acc, word) => {
+        if (word.status === "known") acc.known++;
+        else if (word.status === "learning") acc.learning++;
+        else acc.new++;
+        return acc;
+      },
+      { known: 0, learning: 0, new: 0 }
+    );
+
+    return (
+      <div className="text-center p-8">
+        <h2 className="text-xl font-semibold mb-4">Session Completed!</h2>
+
+        <div className="mb-4">
+          <p className="text-gray-600">
+            You've completed this learning session.
+          </p>
+          {useSmart && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg text-left">
+              <h3 className="font-medium text-blue-700 mb-2">
+                Smart Learning Stats
+              </h3>
+              <p className="text-sm mb-2">
+                Words mastered:{" "}
+                <span className="font-medium">{knownStatus.known}</span>
+              </p>
+              <p className="text-sm mb-2">
+                Words in progress:{" "}
+                <span className="font-medium">{knownStatus.learning}</span>
+              </p>
+              <p className="text-sm text-gray-600 italic mt-3">
+                These words will be strategically shown again in future sessions
+                to help reinforce your memory.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <button onClick={startNewSession} className="btn btn-primary">
+          Start New Session
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Learn Oxford 5000+ Words</h1>
-
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
           <div>
@@ -362,6 +458,30 @@ export const LearnPage = () => {
             />
           </div>
         </div>
+
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">
+            Smart Learning
+          </span>
+          <button
+            onClick={toggleLearningMode}
+            className={`relative inline-flex items-center h-6 rounded-full w-11 ${
+              useSmart ? "bg-blue-600" : "bg-gray-300"
+            }`}
+          >
+            <span className="sr-only">Toggle Smart Learning</span>
+            <span
+              className={`${
+                useSmart ? "translate-x-6" : "translate-x-1"
+              } inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out`}
+            />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          {useSmart
+            ? "Smart mode: mixes new words and words that need review to help you remember better."
+            : "Traditional mode: words are sorted by encounter count."}
+        </p>
       </div>
 
       <div className="flex flex-wrap justify-center gap-3 mb-6">
@@ -427,15 +547,7 @@ export const LearnPage = () => {
             {renderLearningComponent()}
           </>
         ) : (
-          <div className="text-center p-8">
-            <h2 className="text-xl font-semibold mb-4">Session Completed!</h2>
-            <p className="text-gray-600 mb-6">
-              You've completed this learning session.
-            </p>
-            <button onClick={startNewSession} className="btn btn-primary">
-              Start New Session
-            </button>
-          </div>
+          renderCompletedSession()
         )}
       </div>
     </div>
