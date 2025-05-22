@@ -87,7 +87,7 @@ export const WordsListPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg mb-6">
+      <div className="bg-white rounded-lg shadow-lg p-2 mb-6">
         <h2 className="text-2xl font-bold mb-4 text-gray-800">Word List</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
