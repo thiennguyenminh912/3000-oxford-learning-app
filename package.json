@@ -9,9 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy": "yarn build",
-    "local-deploy": "gh-pages -d dist",
-    "deploy": "gh-pages -d dist -r https://x-access-token:${GITHUB_TOKEN}@github.com/thiennguyenminh912/3000-oxford-learning-app.git"
+    "predeploy": "yarn build"
   },
   "dependencies": {
     "@heroicons/react": "2.1.1",
