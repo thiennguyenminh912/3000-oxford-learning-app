@@ -35,21 +35,10 @@ export const useVoices = () => {
     // Hàm lấy voices từ Speech API
     const loadVoices = () => {
       try {
-        console.log("Loading voices...");
         const availableVoices = window.speechSynthesis.getVoices();
 
         if (availableVoices && availableVoices.length > 0) {
-          console.log(`Loaded ${availableVoices.length} voices`);
           setVoices(availableVoices);
-
-          // Log all available voices for debugging
-          availableVoices.forEach((voice, index) => {
-            console.log(
-              `Voice ${index + 1}: ${voice.name} (${voice.lang}) - Default: ${
-                voice.default
-              }`
-            );
-          });
 
           // Make a copy of voices array for selection to avoid mutating the original
           const voicesList = [...availableVoices];
@@ -114,10 +103,6 @@ export const useVoices = () => {
           if (!selectedVoice) {
             selectedVoice =
               voicesList.find((v) => v.default) || voicesList[0] || null;
-            console.log(
-              "Using fallback voice:",
-              selectedVoice?.name || "None available"
-            );
           }
 
           setEnglishVoice(selectedVoice);

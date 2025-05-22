@@ -78,7 +78,6 @@ export const getWordDefinition = async (
 
     // Nếu đã có trong cache, trả về ngay
     if (cachedDefinition) {
-      console.log(`Using cached definition for ${word.word}`);
       return cachedDefinition;
     }
 
@@ -179,7 +178,6 @@ export const generateQuizQuestion = async (
 
     // Nếu đã có trong cache, trả về ngay
     if (cachedQuiz) {
-      console.log(`Using cached quiz for ${word.word}`);
       return cachedQuiz;
     }
 

@@ -105,8 +105,6 @@ export const Flashcard: React.FC<FlashcardProps> = ({
     }, 500);
   };
 
-  console.log(word, "word");
-
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
       <div className="w-full aspect-[3/2] relative">

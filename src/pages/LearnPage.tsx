@@ -40,7 +40,6 @@ export const LearnPage = () => {
     if (useSmart) {
       // Sử dụng thuật toán thông minh
       const smartWords = getSmartLearningWords(sessionLength);
-      console.log("Smart learning mode: loaded", smartWords.length, "words");
       setAvailableWords(smartWords);
     } else {
       // Sử dụng chế độ cũ
@@ -115,12 +114,8 @@ export const LearnPage = () => {
           if (nextWord) {
             // Preload khác nhau dựa trên chế độ học
             if (learningMode === "quiz") {
-              console.log(`Preloading quiz for next word: ${nextWord.word}`);
               await generateQuizQuestion(nextWord);
             } else if (learningMode === "flashcard") {
-              console.log(
-                `Preloading definition for next word: ${nextWord.word}`
-              );
               await getWordDefinition(nextWord);
             }
           }
@@ -312,11 +307,6 @@ export const LearnPage = () => {
     // Khi bắt đầu phiên mới, cập nhật lại danh sách từ
     if (useSmart) {
       const smartWords = getSmartLearningWords(sessionLength);
-      console.log(
-        "Starting new session with",
-        smartWords.length,
-        "smart-selected words"
-      );
       setAvailableWords(smartWords);
     }
   };

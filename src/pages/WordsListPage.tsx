@@ -87,9 +87,7 @@ export const WordsListPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-2 mb-6">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">Word List</h2>
-
+      <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* Search Input */}
           <div>
@@ -223,7 +221,7 @@ export const WordsListPage = () => {
                       </td>
                       <td className="px-1 py-3 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-24 h-2 bg-gray-200 rounded-full mr-2">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
                             <div
                               className="h-2 bg-green-500 rounded-full"
                               style={{

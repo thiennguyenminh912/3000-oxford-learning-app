@@ -169,8 +169,6 @@ export const useWordStore = create<WordStore>()(
       getSmartLearningWords: (sessionLength) => {
         const { words, selectedLevel, reviewQueue } = get();
 
-        console.log(words, "words");
-
         // Lọc danh sách từ theo level nếu đã chọn
         const filteredWords = words.filter((word) => {
           const levelMatch = !selectedLevel || word.level === selectedLevel;
