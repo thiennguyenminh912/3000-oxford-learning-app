@@ -509,14 +509,6 @@ export const LearnPage = () => {
         >
           Spelling
         </button>
-        <button
-          onClick={() => handleModeChange("pronunciation")}
-          className={`btn ${
-            learningMode === "pronunciation" ? "btn-primary" : "btn-secondary"
-          }`}
-        >
-          Pronunciation
-        </button>
       </div>
 
       <div className="card">
