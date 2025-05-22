@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "yarn build",
-    "deploy": "gh-pages -d dist"
+    "local-deploy": "gh-pages -d dist",
+    "deploy": "gh-pages -d dist -r https://x-access-token:${GITHUB_TOKEN}@github.com/thiennguyenminh912/3000-oxford-learning-app.git"
   },
   "dependencies": {
     "@heroicons/react": "2.1.1",
