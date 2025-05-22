@@ -1,4 +1,4 @@
-import data from "../oxford-4999.json";
+import data from "../oxford-5000.json";
 
 export interface WordData {
   word: string;
