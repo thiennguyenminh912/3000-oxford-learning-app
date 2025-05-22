@@ -26,7 +26,6 @@ export const WordsListPage = () => {
     { value: "new", label: "New" },
     { value: "learning", label: "Learning" },
     { value: "known", label: "Known" },
-    { value: "skipped", label: "Skipped" },
   ];
 
   useEffect(() => {

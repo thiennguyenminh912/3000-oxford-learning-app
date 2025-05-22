@@ -10,12 +10,14 @@ interface QuizGameProps {
   alternatives: WordData[];
   onComplete: () => void;
   onSkip: () => void;
+  onKnown: () => void;
 }
 
 export const QuizGame: React.FC<QuizGameProps> = ({
   word,
   onComplete,
   onSkip,
+  onKnown,
 }) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -177,9 +179,22 @@ export const QuizGame: React.FC<QuizGameProps> = ({
         )}
 
         <div className="flex gap-3">
-          {isCorrect === null && (
-            <button onClick={onSkip} className="w-full btn btn-secondary">
+          {/* {isCorrect === null && (
+            <button onClick={onSkip} className="flex-1 btn btn-secondary">
               Skip
+            </button>
+          )} */}
+          {isCorrect === null && (
+            <button onClick={onComplete} className="flex-1 btn btn-primary">
+              Next
+            </button>
+          )}
+          {isCorrect === null && (
+            <button
+              onClick={onKnown}
+              className="flex-1 btn bg-green-600 text-white hover:bg-green-700"
+            >
+              Got it
             </button>
           )}
           {isCorrect === false && (

@@ -35,6 +35,13 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   const { speakWord } = useVoices();
 
   useEffect(() => {
+    // Reset definition state when word changes to prevent showing previous word's definition
+    setDefinition({
+      englishDefinition: "",
+      vietnameseDefinition: "",
+      examples: [""],
+    });
+
     // Lấy định nghĩa từ API khi từ thay đổi
     const fetchDefinition = async () => {
       if (!word) return;
@@ -180,7 +187,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             }}
             animate={{ opacity: isFlipped ? 1 : 0 }}
           >
-            {isLoading ? (
+            {isLoading || !definition.englishDefinition ? (
               <div className="flex flex-col items-center">
                 <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p>Loading definition...</p>
@@ -225,9 +232,9 @@ export const Flashcard: React.FC<FlashcardProps> = ({
       </div>
 
       <div className="flex gap-3 mt-4 w-full">
-        <button onClick={onSkip} className="flex-1 btn btn-secondary">
+        {/* <button onClick={onSkip} className="flex-1 btn btn-secondary">
           Skip
-        </button>
+        </button> */}
         <button onClick={onComplete} className="flex-1 btn btn-primary">
           Next
         </button>
@@ -235,7 +242,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           onClick={onKnown}
           className="flex-1 btn bg-green-600 text-white hover:bg-green-700"
         >
-          I Know This
+          Got it
         </button>
       </div>
 

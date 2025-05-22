@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useWordStore } from "../store/wordStore";
 import { Flashcard } from "../components/Flashcard";
 import { QuizGame } from "../components/QuizGame";
@@ -27,13 +27,91 @@ export const LearnPage = () => {
   const [learningMode, setLearningMode] = useState<LearningMode>("flashcard");
   const [availableWords, setAvailableWords] = useState<WordData[]>([]);
   const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [sessionLength, setSessionLength] = useState(10);
+  const [sessionLength, setSessionLength] = useState(20);
   const [isPreloading, setIsPreloading] = useState(false);
   const [useSmart, setUseSmart] = useState(true); // Mặc định sử dụng chế độ thông minh
   const previousWordIndexRef = useRef<number>(0);
   const previousModeRef = useRef<LearningMode>("flashcard");
   const lastSpeakTimeRef = useRef<number>(0);
+  const preloadQueueRef = useRef<number[]>([]);
+  const isPreloadingSessionRef = useRef<boolean>(false);
   const { speakWord, stopSpeaking } = useVoices();
+
+  // Hàm preload tất cả từ trong session
+  const preloadSessionWords = useCallback(async () => {
+    // Nếu đang preload session, không preload lại
+    if (isPreloadingSessionRef.current) return;
+
+    // Đánh dấu là đang preload session
+    isPreloadingSessionRef.current = true;
+
+    // Tạo danh sách chỉ số từ cần preload
+    const wordsToPreload = [];
+    for (let i = 0; i < Math.min(sessionLength, availableWords.length); i++) {
+      // Bỏ qua từ hiện tại và từ tiếp theo (vì đã được preload riêng)
+      if (i !== currentWordIndex && i !== currentWordIndex + 1) {
+        wordsToPreload.push(i);
+      }
+    }
+
+    // Xáo trộn thứ tự để preload ngẫu nhiên, tránh quá nhiều request liên tiếp
+    const shuffledIndices = wordsToPreload.sort(() => Math.random() - 0.5);
+    preloadQueueRef.current = shuffledIndices;
+
+    // Bắt đầu preload từng từ một
+    processPreloadQueue();
+  }, [availableWords, currentWordIndex, sessionLength]);
+
+  // Hàm xử lý hàng đợi preload từng từ một
+  const processPreloadQueue = useCallback(async () => {
+    // Nếu không còn từ nào trong hàng đợi, kết thúc
+    if (preloadQueueRef.current.length === 0) {
+      isPreloadingSessionRef.current = false;
+      return;
+    }
+
+    // Lấy chỉ số từ tiếp theo cần preload
+    const nextIndex = preloadQueueRef.current.shift();
+    if (nextIndex === undefined || nextIndex >= availableWords.length) {
+      // Xử lý tiếp từ tiếp theo trong hàng đợi
+      setTimeout(processPreloadQueue, 100);
+      return;
+    }
+
+    try {
+      const wordToPreload = availableWords[nextIndex];
+
+      // Preload cả định nghĩa và quiz để dùng sau này
+      if (wordToPreload) {
+        console.log(`Preloading word #${nextIndex}: ${wordToPreload.word}`);
+
+        // Preload định nghĩa
+        await getWordDefinition(wordToPreload).catch((e) =>
+          console.log(
+            `Error preloading definition for ${wordToPreload.word}:`,
+            e
+          )
+        );
+
+        // Preload quiz sau 500ms để tránh quá nhiều request đồng thời
+        setTimeout(async () => {
+          await generateQuizQuestion(wordToPreload).catch((e) =>
+            console.log(`Error preloading quiz for ${wordToPreload.word}:`, e)
+          );
+
+          // Xử lý từ tiếp theo sau 1 giây để tránh quá tải API
+          setTimeout(processPreloadQueue, 1000);
+        }, 500);
+      } else {
+        // Nếu không có từ, tiếp tục với từ tiếp theo
+        setTimeout(processPreloadQueue, 100);
+      }
+    } catch (error) {
+      console.error("Error in preload queue:", error);
+      // Tiếp tục với từ tiếp theo ngay cả khi có lỗi
+      setTimeout(processPreloadQueue, 1000);
+    }
+  }, [availableWords]);
 
   // Cập nhật danh sách từ khi thay đổi bộ lọc hoặc độ dài phiên học
   useEffect(() => {
@@ -58,6 +136,10 @@ export const LearnPage = () => {
     // Reset về từ đầu tiên khi thay đổi danh sách
     setCurrentWordIndex(0);
     setSessionCompleted(false);
+
+    // Reset trạng thái preload khi đổi session
+    isPreloadingSessionRef.current = false;
+    preloadQueueRef.current = [];
   }, [
     getFilteredWords,
     getSmartLearningWords,
@@ -65,6 +147,28 @@ export const LearnPage = () => {
     selectedLevel,
     useSmart,
   ]);
+
+  // Khi danh sách từ được cập nhật, bắt đầu preload toàn bộ session
+  useEffect(() => {
+    if (availableWords.length > 0 && !sessionCompleted) {
+      // Preload từ hiện tại trước
+      const currentWord = availableWords[currentWordIndex];
+      if (currentWord) {
+        // Preload định nghĩa cho từ hiện tại
+        getWordDefinition(currentWord).catch((error) =>
+          console.error("Error preloading current word definition:", error)
+        );
+
+        // Preload quiz cho từ hiện tại
+        generateQuizQuestion(currentWord).catch((error) =>
+          console.error("Error preloading current word quiz:", error)
+        );
+
+        // Sau đó preload toàn bộ session
+        setTimeout(preloadSessionWords, 1000);
+      }
+    }
+  }, [availableWords, currentWordIndex, preloadSessionWords, sessionCompleted]);
 
   // Tự động đọc từ mới khi chuyển từ
   useEffect(() => {
@@ -92,19 +196,15 @@ export const LearnPage = () => {
 
   // Thêm effect để preload dữ liệu cho từ tiếp theo
   useEffect(() => {
-    // Chỉ preload nếu:
-    // 1. Đang ở chế độ quiz hoặc flashcard
-    // 2. Chưa hoàn thành phiên học
-    // 3. Có từ tiếp theo để preload
-    // 4. Không đang trong quá trình preload
-    const shouldPreload =
+    // Luôn ưu tiên preload từ tiếp theo ngay khi có thể
+    const shouldPreloadNext =
       (learningMode === "quiz" || learningMode === "flashcard") &&
       !sessionCompleted &&
       currentWordIndex <
         Math.min(sessionLength - 1, availableWords.length - 1) &&
       !isPreloading;
 
-    if (shouldPreload) {
+    if (shouldPreloadNext) {
       const preloadNextWordData = async () => {
         try {
           setIsPreloading(true);
@@ -112,11 +212,39 @@ export const LearnPage = () => {
           const nextWord = availableWords[nextWordIndex];
 
           if (nextWord) {
-            // Preload khác nhau dựa trên chế độ học
-            if (learningMode === "quiz") {
-              await generateQuizQuestion(nextWord);
-            } else if (learningMode === "flashcard") {
-              await getWordDefinition(nextWord);
+            console.log(`Priority preloading next word: ${nextWord.word}`);
+
+            // Preload cho cả hai chế độ luôn, bất kể mode hiện tại
+            // để chuẩn bị cho việc chuyển đổi mode
+            await Promise.all([
+              getWordDefinition(nextWord).catch((e) =>
+                console.log("Error preloading definition:", e)
+              ),
+              generateQuizQuestion(nextWord).catch((e) =>
+                console.log("Error preloading quiz:", e)
+              ),
+            ]);
+
+            // Nếu còn từ tiếp theo nữa (từ thứ 3), cũng preload
+            if (
+              nextWordIndex + 1 <
+              Math.min(sessionLength, availableWords.length)
+            ) {
+              const thirdWord = availableWords[nextWordIndex + 1];
+              if (thirdWord) {
+                // Preload cho từ thứ 3 cũng theo cả hai chế độ
+                Promise.all([
+                  getWordDefinition(thirdWord).catch((e) =>
+                    console.log(
+                      "Error preloading definition for third word:",
+                      e
+                    )
+                  ),
+                  generateQuizQuestion(thirdWord).catch((e) =>
+                    console.log("Error preloading quiz for third word:", e)
+                  ),
+                ]);
+              }
             }
           }
         } catch (error) {
@@ -354,6 +482,7 @@ export const LearnPage = () => {
             alternatives={getAlternativeWords()}
             onComplete={handleWordComplete}
             onSkip={handleWordSkip}
+            onKnown={handleWordKnown}
           />
         );
       case "spelling":
@@ -362,6 +491,7 @@ export const LearnPage = () => {
             word={currentWord}
             onComplete={handleWordComplete}
             onSkip={handleWordSkip}
+            onKnown={handleWordKnown}
           />
         );
       case "pronunciation":

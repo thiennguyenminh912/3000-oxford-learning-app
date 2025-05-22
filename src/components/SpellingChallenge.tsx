@@ -6,12 +6,14 @@ interface SpellingChallengeProps {
   word: WordData;
   onComplete: () => void;
   onSkip: () => void;
+  onKnown: () => void;
 }
 
 export const SpellingChallenge: React.FC<SpellingChallengeProps> = ({
   word,
   onComplete,
   onSkip,
+  onKnown,
 }) => {
   const [userInput, setUserInput] = useState("");
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -175,7 +177,7 @@ export const SpellingChallenge: React.FC<SpellingChallengeProps> = ({
                   onClick={onSkip}
                   className="flex-1 btn btn-secondary"
                 >
-                  Skip
+                  Next
                 </button>
                 <button
                   type="button"
@@ -187,6 +189,13 @@ export const SpellingChallenge: React.FC<SpellingChallengeProps> = ({
                 </button>
                 <button type="submit" className="flex-1 btn btn-primary">
                   Check
+                </button>
+                <button
+                  type="button"
+                  onClick={onKnown}
+                  className="flex-1 btn bg-green-600 text-white hover:bg-green-700"
+                >
+                  Got it
                 </button>
               </>
             )}

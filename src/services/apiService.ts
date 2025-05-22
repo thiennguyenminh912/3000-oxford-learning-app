@@ -2,8 +2,28 @@ import type { WordData } from "../utils/wordUtils";
 import { useWordStore } from "../store/wordStore";
 
 const GEMINI_API_KEY = "AIzaSyBm9M3ptHeP00x4F-vb5OZZi6r0Ql4f9Xc";
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemma-3n-e4b-it:generateContent";
+
+// List of available Gemini models
+const GEMINI_MODELS = [
+  "gemma-3-1b-it",
+  "gemma-3-4b-it",
+  "gemma-3-12b-it",
+  "gemma-3n-e4b-it",
+  "gemma-3-27b-it",
+];
+
+// Function to get a random model
+const getRandomModel = () => {
+  const randomIndex = Math.floor(Math.random() * GEMINI_MODELS.length);
+  return GEMINI_MODELS[randomIndex];
+};
+
+// Generate API URL with random model
+const getGeminiApiUrl = () => {
+  const model = getRandomModel();
+  console.log(`Using Gemini model: ${model}`);
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+};
 
 interface GeminiResponse {
   candidates: {
@@ -27,10 +47,14 @@ export interface QuizQuestion {
   correctAnswer: string;
 }
 
+// Theo dõi những từ đang được xử lý để tránh gọi API lặp lại
+const processingDefinitions = new Set<string>();
+const processingQuizzes = new Set<string>();
+
 // Hàm chung để gọi Gemini API
 const callGeminiAPI = async (prompt: string): Promise<string> => {
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${getGeminiApiUrl()}?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -78,86 +102,109 @@ export const getWordDefinition = async (
 
     // Nếu đã có trong cache, trả về ngay
     if (cachedDefinition) {
+      console.log(`Definition for "${word.word}" loaded from cache`);
       return cachedDefinition;
     }
 
-    const prompt = `Define "${word.word}" with a concise definition, Oxford dictionary definition, usage examples and Vietnamese translation. Format your response with the following sections:
+    // Nếu từ này đang được xử lý, chờ một chút và thử lại cache
+    if (processingDefinitions.has(word.word)) {
+      console.log(
+        `Definition for "${word.word}" is already being processed, waiting...`
+      );
 
-## ${word.word} Definition:
+      // Chờ 500ms và thử lại từ cache
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-**Concise Definition:** [Short definition here]
-
-## English Oxford Definition:
-
-**${word.word}** [part of speech]
-**1. [First definition]**
-**2. [Second definition if applicable]**
-
-## Examples:
-
-* [Example 1]
-* [Example 2]
-* [Example 3]
-
-## Vietnamese:
-
-**[Vietnamese translation]**`;
-
-    const response = await callGeminiAPI(prompt);
-
-    // Phân tích phản hồi để trích xuất định nghĩa, ví dụ và dịch
-    const englishDefinitionMatch = response.match(
-      /## English Oxford Definition:\s*([\s\S]+?)(?=## Examples:|## Vietnamese:)/
-    );
-    const examplesMatch = response.match(
-      /## Examples:\s*([\s\S]+?)(?=## Vietnamese:)/
-    );
-    const vietnameseMatch = response.match(/## Vietnamese:\s*([\s\S]+)/);
-
-    // Attempt to extract the concise definition if available
-    const conciseDefinitionMatch = response.match(
-      /\*\*Concise Definition:\*\*\s*([\s\S]+?)(?=##)/
-    );
-
-    const englishDefinition = englishDefinitionMatch
-      ? englishDefinitionMatch[1].trim().replace(/\*\*/g, "")
-      : conciseDefinitionMatch
-      ? conciseDefinitionMatch[1].trim()
-      : "Definition not available";
-
-    let examples: string[] = [];
-    if (examplesMatch && examplesMatch[1]) {
-      // First try to match markdown list items that start with asterisks
-      const markdownItems = examplesMatch[1].match(/\*\s+([^*]+)/g);
-
-      if (markdownItems && markdownItems.length > 0) {
-        examples = markdownItems
-          .map((item) => item.replace(/^\*\s+/, "").trim())
-          .filter((ex) => ex.length > 0);
-      } else {
-        // Fallback to splitting by common list item markers
-        examples = examplesMatch[1]
-          .split(/[*•-]/)
-          .map((ex) => ex.trim())
-          .filter((ex) => ex.length > 0);
+      const updatedCache = wordStore.getCachedDefinition(word.word);
+      if (updatedCache) {
+        return updatedCache;
       }
+
+      // Nếu vẫn không có trong cache, tiếp tục xử lý (nhưng có thể gây gọi API trùng lặp)
     }
 
-    const vietnameseDefinition = vietnameseMatch
-      ? vietnameseMatch[1].trim().replace(/\*\*/g, "")
-      : "Không có bản dịch";
+    // Đánh dấu từ này đang được xử lý
+    processingDefinitions.add(word.word);
+    console.log(`Fetching definition for "${word.word}" from API`);
 
-    const definition = {
-      englishDefinition,
-      vietnameseDefinition,
-      examples: examples.length > 0 ? examples : ["No examples available"],
-    };
+    // Cập nhật prompt để yêu cầu phản hồi JSON
+    const prompt = `Define the word "${word.word}" including its English definition, Vietnamese translation, and usage examples.
 
-    // Lưu kết quả vào cache
-    wordStore.cacheDefinition(word.word, definition);
+Please respond with a JSON object in EXACTLY this format (no additional text before or after):
+{
+  "englishDefinition": "A concise definition in English, including part of speech and key meanings",
+  "vietnameseDefinition": "A concise Vietnamese translation",
+  "examples": [
+    "An example sentence using the word",
+    "Another example sentence if available",
+    "A third example if available"
+  ]
+}
 
-    return definition;
+Make sure:
+1. The JSON is valid and properly formatted
+2. englishDefinition includes the word's part of speech and primary meaning
+3. vietnameseDefinition is an accurate translation
+4. examples array contains 1-3 practical usage examples
+5. All fields are properly populated with appropriate content`;
+
+    let response = await callGeminiAPI(prompt);
+
+    // Làm sạch phản hồi để đảm bảo chỉ lấy JSON
+    response = response.trim();
+
+    // Xóa các backticks nếu Gemini bọc JSON trong code block
+    if (response.startsWith("```json")) {
+      response = response.replace(/```json\n|```/g, "");
+    } else if (response.startsWith("```")) {
+      response = response.replace(/```\n|```/g, "");
+    }
+
+    try {
+      // Parse JSON từ phản hồi
+      const parsedDefinition = JSON.parse(response) as WordDefinition;
+
+      // Đảm bảo tất cả các trường đều có dữ liệu
+      const definition: WordDefinition = {
+        englishDefinition:
+          parsedDefinition.englishDefinition || "Definition not available",
+        vietnameseDefinition:
+          parsedDefinition.vietnameseDefinition || "Không có bản dịch",
+        examples:
+          Array.isArray(parsedDefinition.examples) &&
+          parsedDefinition.examples.length > 0
+            ? parsedDefinition.examples
+            : ["No examples available"],
+      };
+
+      // Lưu kết quả vào cache
+      wordStore.cacheDefinition(word.word, definition);
+      console.log(`Definition for "${word.word}" saved to cache`);
+
+      // Xóa từ khỏi danh sách đang xử lý
+      processingDefinitions.delete(word.word);
+
+      return definition;
+    } catch (jsonError) {
+      console.error("Error parsing JSON response:", jsonError);
+      console.log("Raw response:", response);
+
+      // Trả về dữ liệu mặc định nếu không thể parse JSON
+      const fallbackDefinition: WordDefinition = {
+        englishDefinition: "Failed to parse definition",
+        vietnameseDefinition: "Không thể phân tích định nghĩa",
+        examples: ["Failed to load examples"],
+      };
+
+      // Xóa từ khỏi danh sách đang xử lý
+      processingDefinitions.delete(word.word);
+
+      return fallbackDefinition;
+    }
   } catch (error) {
+    // Xóa từ khỏi danh sách đang xử lý trong trường hợp lỗi
+    processingDefinitions.delete(word.word);
+
     console.error("Error getting word definition:", error);
     return {
       englishDefinition: "Failed to load definition",
@@ -178,8 +225,30 @@ export const generateQuizQuestion = async (
 
     // Nếu đã có trong cache, trả về ngay
     if (cachedQuiz) {
+      console.log(`Quiz for "${word.word}" loaded from cache`);
       return cachedQuiz;
     }
+
+    // Nếu từ này đang được xử lý, chờ một chút và thử lại cache
+    if (processingQuizzes.has(word.word)) {
+      console.log(
+        `Quiz for "${word.word}" is already being processed, waiting...`
+      );
+
+      // Chờ 500ms và thử lại từ cache
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const updatedCache = wordStore.getCachedQuizQuestion(word.word);
+      if (updatedCache) {
+        return updatedCache;
+      }
+
+      // Nếu vẫn không có trong cache, tiếp tục xử lý
+    }
+
+    // Đánh dấu từ này đang được xử lý
+    processingQuizzes.add(word.word);
+    console.log(`Fetching quiz for "${word.word}" from API`);
 
     const prompt = `Quiz for word "${word.word}":
 Question: What is the meaning of "${word.word}"?
@@ -246,9 +315,16 @@ Correct:`;
 
     // Lưu kết quả vào cache
     wordStore.cacheQuizQuestion(word.word, quizQuestion);
+    console.log(`Quiz for "${word.word}" saved to cache`);
+
+    // Xóa từ khỏi danh sách đang xử lý
+    processingQuizzes.delete(word.word);
 
     return quizQuestion;
   } catch (error) {
+    // Xóa từ khỏi danh sách đang xử lý trong trường hợp lỗi
+    processingQuizzes.delete(word.word);
+
     console.error("Error generating quiz question:", error);
     // Trả về câu hỏi mặc định nếu có lỗi
     return {
