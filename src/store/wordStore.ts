@@ -61,7 +61,6 @@ export const useWordStore = create<WordStore>()(
       loadWords: () => {
         if (get().words.length === 0) {
           const { words, levels } = processWordData();
-          console.log(words, "words");
           set({ words, levels, isDataLoaded: true });
         } else {
           set({ isDataLoaded: true });

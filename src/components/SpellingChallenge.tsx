@@ -34,7 +34,7 @@ export const SpellingChallenge: React.FC<SpellingChallengeProps> = ({
     // Đặt một timeout ngắn để đảm bảo không bị phát âm trùng lặp với component khác
     const timer = setTimeout(() => {
       if (!hasPlayedInitialAudio) {
-        playAudio();
+        // playAudio();
         setHasPlayedInitialAudio(true);
       }
     }, 500);

@@ -13,6 +13,14 @@ export const useVoices = () => {
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lastWordRef = useRef<string>("");
   const lastTimeRef = useRef<number>(0);
+  const isIOSRef = useRef(false);
+
+  // Detect iOS device
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    isIOSRef.current = isIOS;
+    console.log("iOS device detected:", isIOS);
+  }, []);
 
   // Khởi tạo SpeechSynthesis và đảm bảo nó đã sẵn sàng
   useEffect(() => {
@@ -34,17 +42,84 @@ export const useVoices = () => {
           console.log(`Loaded ${availableVoices.length} voices`);
           setVoices(availableVoices);
 
-          // Ưu tiên tìm giọng anh-anh (British English)
-          const britishVoice = availableVoices.find(
-            (voice) => voice.lang === "en-GB" || voice.name.includes("British")
-          );
+          // Log all available voices for debugging
+          availableVoices.forEach((voice, index) => {
+            console.log(
+              `Voice ${index + 1}: ${voice.name} (${voice.lang}) - Default: ${
+                voice.default
+              }`
+            );
+          });
 
-          // Nếu không có, tìm bất kỳ giọng tiếng Anh nào
-          const anyEnglishVoice = availableVoices.find((voice) =>
-            voice.lang.startsWith("en")
-          );
+          // Make a copy of voices array for selection to avoid mutating the original
+          const voicesList = [...availableVoices];
+          let selectedVoice = null;
 
-          const selectedVoice = britishVoice || anyEnglishVoice || null;
+          // For iOS devices
+          if (isIOSRef.current) {
+            // Try high-quality iOS English voices first
+            const iosEnglishVoices = [
+              voicesList.find(
+                (v) => v.name.includes("Daniel") && v.lang.startsWith("en")
+              ),
+              voicesList.find(
+                (v) => v.name.includes("Alex") && v.lang.startsWith("en")
+              ),
+              voicesList.find(
+                (v) => v.name.includes("Samantha") && v.lang.startsWith("en")
+              ),
+              // Find any English US voice
+              voicesList.find((v) => v.lang === "en-US"),
+              // Find any English voice
+              voicesList.find((v) => v.lang.startsWith("en")),
+            ].filter(Boolean);
+
+            selectedVoice = iosEnglishVoices[0] || null;
+          } else {
+            // For non-iOS devices - try a broader selection approach
+            // First try to find Google UK English voices (high quality)
+            const googleUKVoice = voicesList.find(
+              (v) =>
+                v.name.includes("Google UK English") ||
+                (v.name.includes("Google") && v.lang === "en-GB")
+            );
+
+            // Try Microsoft voices which are often good quality
+            const microsoftVoice = voicesList.find(
+              (v) => v.name.includes("Microsoft") && v.lang.startsWith("en")
+            );
+
+            // Next try any British English voice
+            const ukVoice = voicesList.find((v) => v.lang === "en-GB");
+
+            // Next try any US English voice
+            const usVoice = voicesList.find((v) => v.lang === "en-US");
+
+            // Finally, any English voice
+            const anyEnglishVoice = voicesList.find((v) =>
+              v.lang.startsWith("en")
+            );
+
+            // Use the first voice that matches our criteria
+            selectedVoice =
+              googleUKVoice ||
+              microsoftVoice ||
+              ukVoice ||
+              usVoice ||
+              anyEnglishVoice ||
+              null;
+          }
+
+          // If we still don't have a voice, use the default voice or first available
+          if (!selectedVoice) {
+            selectedVoice =
+              voicesList.find((v) => v.default) || voicesList[0] || null;
+            console.log(
+              "Using fallback voice:",
+              selectedVoice?.name || "None available"
+            );
+          }
+
           setEnglishVoice(selectedVoice);
 
           if (selectedVoice) {
@@ -52,14 +127,14 @@ export const useVoices = () => {
               `Selected voice: ${selectedVoice.name} (${selectedVoice.lang})`
             );
           } else {
-            console.warn("No English voice found");
+            console.warn("No voice selected");
           }
 
           setIsLoading(false);
         } else {
           console.warn("No voices available yet");
           // Nếu không có voices, thử lại sau một khoảng thời gian (đề phòng trường hợp trình duyệt chậm load voices)
-          if (typeof window !== "undefined" && !availableVoices?.length) {
+          if (typeof window !== "undefined") {
             setTimeout(loadVoices, 100);
           }
         }
@@ -70,6 +145,7 @@ export const useVoices = () => {
       }
     };
 
+    // Try to load voices immediately
     loadVoices();
 
     // Chrome cần event này để tải voices
@@ -143,8 +219,29 @@ export const useVoices = () => {
         console.warn("No English voice available, using default");
       }
 
-      utterance.lang = englishVoice?.lang || "en-GB";
-      utterance.volume = 1.0; // Đảm bảo âm lượng tối đa
+      // Always use English language to prevent using device language
+      if (isIOSRef.current) {
+        // For iOS, always use en-US explicitly
+        utterance.lang = "en-US";
+      } else if (englishVoice?.lang) {
+        // Use the language of the selected voice
+        utterance.lang = englishVoice.lang;
+      } else {
+        // Fallback to en-US
+        utterance.lang = "en-US";
+      }
+
+      // Set speech parameters for better quality
+      utterance.volume = 1.0;
+      // Slightly slower on iOS for better quality, normal speed elsewhere
+      utterance.rate = isIOSRef.current ? 0.9 : 1.0;
+      utterance.pitch = 1.0;
+
+      console.log(
+        `Speaking with: lang=${utterance.lang}, rate=${utterance.rate}, voice=${
+          utterance.voice?.name || "default"
+        }`
+      );
 
       // Đặt trạng thái và lưu utterance hiện tại
       isSpeakingRef.current = true;
@@ -169,10 +266,13 @@ export const useVoices = () => {
         console.log("Speaking now...");
         window.speechSynthesis.speak(utterance);
 
-        // Fix cho bug của Chrome không phát hết
-        fixSpeechSynthesisBug();
+        // Apply fix for Chrome and desktop Safari
+        if (!isIOSRef.current) {
+          fixSpeechSynthesisBug();
+        }
       } catch (err) {
         console.error("Error speaking:", err);
+        isSpeakingRef.current = false;
       }
     },
     [englishVoice, fixSpeechSynthesisBug]
