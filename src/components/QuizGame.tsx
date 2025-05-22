@@ -16,7 +16,6 @@ interface QuizGameProps {
 export const QuizGame: React.FC<QuizGameProps> = ({
   word,
   onComplete,
-  onSkip,
   onKnown,
 }) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);

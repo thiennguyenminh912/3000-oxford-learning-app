@@ -21,7 +21,6 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   word,
   onComplete,
   onKnown,
-  onSkip,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
