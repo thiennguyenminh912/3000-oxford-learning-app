@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { processWordData } from "../utils/wordUtils";
 import type { WordData } from "../utils/wordUtils";
 import type { WordDefinition, QuizQuestion } from "../services/apiService";
+import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 
 interface WordStore {
   words: WordData[];
@@ -101,7 +102,7 @@ export const useWordStore = create<WordStore>()(
             if (word.word === wordId) {
               const newEncounters = (word.encounters || 0) + 1;
               const newStatus =
-                newEncounters >= 22
+                newEncounters >= REQUIRED_WORD_ENCOUNTERS
                   ? "known"
                   : word.status === "new"
                   ? "learning"
@@ -122,7 +123,7 @@ export const useWordStore = create<WordStore>()(
 
         // Thêm từ vào hàng đợi ôn tập nếu người dùng vẫn chưa thuộc
         const word = get().words.find((w) => w.word === wordId);
-        if (word && (word.encounters || 0) < 22) {
+        if (word && (word.encounters || 0) < REQUIRED_WORD_ENCOUNTERS) {
           get().addToReviewQueue(wordId);
         }
       },

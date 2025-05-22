@@ -82,36 +82,70 @@ export const getWordDefinition = async (
       return cachedDefinition;
     }
 
-    const prompt = `Define "${word.word}" concisely:
-English Definition: 
-Examples:
-- 
-- 
-Vietnamese:`;
+    const prompt = `Define "${word.word}" with a concise definition, Oxford dictionary definition, usage examples and Vietnamese translation. Format your response with the following sections:
+
+## ${word.word} Definition:
+
+**Concise Definition:** [Short definition here]
+
+## English Oxford Definition:
+
+**${word.word}** [part of speech]
+**1. [First definition]**
+**2. [Second definition if applicable]**
+
+## Examples:
+
+* [Example 1]
+* [Example 2]
+* [Example 3]
+
+## Vietnamese:
+
+**[Vietnamese translation]**`;
 
     const response = await callGeminiAPI(prompt);
 
     // Phân tích phản hồi để trích xuất định nghĩa, ví dụ và dịch
     const englishDefinitionMatch = response.match(
-      /English Definition:\s*(.+?)(?=Examples:|Vietnamese:)/s
+      /## English Oxford Definition:\s*([\s\S]+?)(?=## Examples:|## Vietnamese:)/
     );
-    const examplesMatch = response.match(/Examples:\s*(.+?)(?=Vietnamese:)/s);
-    const vietnameseMatch = response.match(/Vietnamese:\s*(.+)/s);
+    const examplesMatch = response.match(
+      /## Examples:\s*([\s\S]+?)(?=## Vietnamese:)/
+    );
+    const vietnameseMatch = response.match(/## Vietnamese:\s*([\s\S]+)/);
+
+    // Attempt to extract the concise definition if available
+    const conciseDefinitionMatch = response.match(
+      /\*\*Concise Definition:\*\*\s*([\s\S]+?)(?=##)/
+    );
 
     const englishDefinition = englishDefinitionMatch
-      ? englishDefinitionMatch[1].trim()
+      ? englishDefinitionMatch[1].trim().replace(/\*\*/g, "")
+      : conciseDefinitionMatch
+      ? conciseDefinitionMatch[1].trim()
       : "Definition not available";
 
     let examples: string[] = [];
     if (examplesMatch && examplesMatch[1]) {
-      examples = examplesMatch[1]
-        .split(/[-•*]/)
-        .map((ex) => ex.trim())
-        .filter((ex) => ex.length > 0);
+      // First try to match markdown list items that start with asterisks
+      const markdownItems = examplesMatch[1].match(/\*\s+([^*]+)/g);
+
+      if (markdownItems && markdownItems.length > 0) {
+        examples = markdownItems
+          .map((item) => item.replace(/^\*\s+/, "").trim())
+          .filter((ex) => ex.length > 0);
+      } else {
+        // Fallback to splitting by common list item markers
+        examples = examplesMatch[1]
+          .split(/[*•-]/)
+          .map((ex) => ex.trim())
+          .filter((ex) => ex.length > 0);
+      }
     }
 
     const vietnameseDefinition = vietnameseMatch
-      ? vietnameseMatch[1].trim()
+      ? vietnameseMatch[1].trim().replace(/\*\*/g, "")
       : "Không có bản dịch";
 
     const definition = {

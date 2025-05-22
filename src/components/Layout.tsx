@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4">{children}</main>
+      <main className="flex-1 container mx-auto px-4 py-2">{children}</main>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden bg-white shadow-lg border-t fixed bottom-0 left-0 right-0 z-10">

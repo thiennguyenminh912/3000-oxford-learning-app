@@ -5,6 +5,7 @@ import { useVoices } from "../hooks/useVoices";
 import { getWordDefinition } from "../services/apiService";
 import type { WordDefinition } from "../services/apiService";
 import { useWordStore } from "../store/wordStore";
+import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MotionDiv = motion.div as any;
@@ -230,12 +231,17 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
       <div className="flex items-center gap-2 text-gray-600">
         <span className="font-medium">Progress:</span>
-        <span>{word.encounters || 0}/22</span>
+        <span>
+          {word.encounters || 0}/{REQUIRED_WORD_ENCOUNTERS}
+        </span>
         <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-green-500 rounded-full"
             style={{
-              width: `${Math.min(((word.encounters || 0) / 22) * 100, 100)}%`,
+              width: `${Math.min(
+                ((word.encounters || 0) / REQUIRED_WORD_ENCOUNTERS) * 100,
+                100
+              )}%`,
             }}
           />
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useWordStore } from "../store/wordStore";
 import type { WordData } from "../utils/wordUtils";
+import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 
 export const WordsListPage = () => {
   const {
@@ -105,14 +106,16 @@ export const WordsListPage = () => {
                             className="h-2 bg-green-500 rounded-full"
                             style={{
                               width: `${Math.min(
-                                ((word.encounters || 0) / 22) * 100,
+                                ((word.encounters || 0) /
+                                  REQUIRED_WORD_ENCOUNTERS) *
+                                  100,
                                 100
                               )}%`,
                             }}
                           />
                         </div>
                         <span className="text-xs text-gray-500">
-                          {word.encounters || 0}/22
+                          {word.encounters || 0}/{REQUIRED_WORD_ENCOUNTERS}
                         </span>
                       </div>
                     </td>

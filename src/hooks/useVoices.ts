@@ -143,8 +143,6 @@ export const useVoices = () => {
         console.warn("No English voice available, using default");
       }
 
-      utterance.rate = 0.9; // Đọc chậm hơn một chút
-      utterance.pitch = 1;
       utterance.lang = englishVoice?.lang || "en-GB";
       utterance.volume = 1.0; // Đảm bảo âm lượng tối đa
 
