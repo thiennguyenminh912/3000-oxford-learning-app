@@ -8,10 +8,9 @@ import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 interface WordStore {
   words: WordData[];
   levels: string[];
-  categories: string[];
   selectedLevel: string | null;
-  selectedCategory: string | null;
   searchTerm: string;
+  selectedStatus: string | null;
   definitionCache: Record<string, WordDefinition>;
   quizCache: Record<string, QuizQuestion>;
   isDataLoaded: boolean;
@@ -20,7 +19,7 @@ interface WordStore {
   // Actions
   loadWords: () => void;
   setSelectedLevel: (level: string | null) => void;
-  setSelectedCategory: (category: string | null) => void;
+  setSelectedStatus: (status: string | null) => void;
   setSearchTerm: (term: string) => void;
   updateWordStatus: (wordId: string, status: WordData["status"]) => void;
   incrementEncounters: (wordId: string) => void;
@@ -50,10 +49,9 @@ export const useWordStore = create<WordStore>()(
   persist(
     (set, get) => ({
       words: [],
-      levels: [],
-      categories: [],
+      levels: ["A1", "A2", "B1", "B2", "C1", "C2"],
       selectedLevel: null,
-      selectedCategory: null,
+      selectedStatus: null,
       searchTerm: "",
       definitionCache: {},
       quizCache: {},
@@ -62,8 +60,9 @@ export const useWordStore = create<WordStore>()(
 
       loadWords: () => {
         if (get().words.length === 0) {
-          const { words, levels, categories } = processWordData();
-          set({ words, levels, categories, isDataLoaded: true });
+          const { words, levels } = processWordData();
+          console.log(words, "words");
+          set({ words, levels, isDataLoaded: true });
         } else {
           set({ isDataLoaded: true });
         }
@@ -73,8 +72,8 @@ export const useWordStore = create<WordStore>()(
         set({ selectedLevel: level });
       },
 
-      setSelectedCategory: (category) => {
-        set({ selectedCategory: category });
+      setSelectedStatus: (status) => {
+        set({ selectedStatus: status });
       },
 
       setSearchTerm: (term) => {
@@ -155,29 +154,28 @@ export const useWordStore = create<WordStore>()(
       },
 
       getFilteredWords: () => {
-        const { words, selectedLevel, selectedCategory, searchTerm } = get();
+        const { words, selectedLevel, selectedStatus, searchTerm } = get();
 
         return words.filter((word) => {
           const levelMatch = !selectedLevel || word.level === selectedLevel;
-          const categoryMatch =
-            !selectedCategory || word.category === selectedCategory;
+          const statusMatch = !selectedStatus || word.status === selectedStatus;
           const searchMatch =
-            searchTerm &&
-            !word.word.toLowerCase().includes(searchTerm.toLowerCase());
-          return levelMatch && categoryMatch && !searchMatch;
+            !searchTerm ||
+            word.word.toLowerCase().includes(searchTerm.toLowerCase());
+          return levelMatch && statusMatch && searchMatch;
         });
       },
 
       // Triển khai thuật toán thông minh chọn từ
       getSmartLearningWords: (sessionLength) => {
-        const { words, selectedLevel, selectedCategory, reviewQueue } = get();
+        const { words, selectedLevel, reviewQueue } = get();
 
-        // Lọc danh sách từ theo level và category nếu đã chọn
+        console.log(words, "words");
+
+        // Lọc danh sách từ theo level nếu đã chọn
         const filteredWords = words.filter((word) => {
           const levelMatch = !selectedLevel || word.level === selectedLevel;
-          const categoryMatch =
-            !selectedCategory || word.category === selectedCategory;
-          return levelMatch && categoryMatch;
+          return levelMatch;
         });
 
         // Chia thành các nhóm: từ mới, từ cần ôn tập, từ đã biết
@@ -336,11 +334,10 @@ export const useWordStore = create<WordStore>()(
       partialize: (state) => ({
         words: state.words,
         selectedLevel: state.selectedLevel,
-        selectedCategory: state.selectedCategory,
+        selectedStatus: state.selectedStatus,
         definitionCache: state.definitionCache,
         quizCache: state.quizCache,
         levels: state.levels,
-        categories: state.categories,
         reviewQueue: state.reviewQueue,
       }),
     }

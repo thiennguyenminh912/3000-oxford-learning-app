@@ -94,9 +94,9 @@ export const PronunciationPractice: React.FC<PronunciationPracticeProps> = ({
               {word.level}
             </span>
           )}
-          {word.category && (
+          {word.type && (
             <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full">
-              {word.category}
+              {word.type}
             </span>
           )}
         </div>

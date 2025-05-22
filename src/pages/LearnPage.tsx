@@ -21,7 +21,6 @@ export const LearnPage = () => {
     updateWordStatus,
     addToReviewQueue,
     selectedLevel,
-    selectedCategory,
   } = useWordStore();
 
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -65,7 +64,6 @@ export const LearnPage = () => {
     getSmartLearningWords,
     sessionLength,
     selectedLevel,
-    selectedCategory,
     useSmart,
   ]);
 

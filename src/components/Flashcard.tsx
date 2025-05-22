@@ -105,6 +105,8 @@ export const Flashcard: React.FC<FlashcardProps> = ({
     }, 500);
   };
 
+  console.log(word, "word");
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
       <div className="w-full aspect-[3/2] relative">
@@ -121,7 +123,22 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             style={{ backfaceVisibility: "hidden" }}
             animate={{ opacity: isFlipped ? 0 : 1 }}
           >
-            <h2 className="text-3xl font-bold mb-6">{word.word}</h2>
+            <h2 className="text-3xl font-bold mb-2">{word.word}</h2>
+
+            {word.type && (
+              <p className="text-gray-500 mb-2 italic">{word.type}</p>
+            )}
+
+            {word.phonetics && (
+              <div className="flex gap-4 mb-4 text-sm">
+                {word.phonetics.uk && (
+                  <span className="text-blue-600">UK: {word.phonetics.uk}</span>
+                )}
+                {word.phonetics.us && (
+                  <span className="text-red-600">US: {word.phonetics.us}</span>
+                )}
+              </div>
+            )}
 
             <button
               onClick={playAudio}
@@ -145,15 +162,10 @@ export const Flashcard: React.FC<FlashcardProps> = ({
               {audioPlaying ? "Playing..." : "Listen"}
             </button>
 
-            <div className="mt-auto text-sm text-gray-500">
+            <div className="mt-2 text-sm text-gray-500">
               {word.level && (
                 <span className="mr-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                   {word.level}
-                </span>
-              )}
-              {word.category && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                  {word.category}
                 </span>
               )}
             </div>
