@@ -18,7 +18,7 @@ function App() {
   }, [loadWords, isDataLoaded]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/3000-oxford-learning-app/">
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
