@@ -331,7 +331,7 @@ export const useWordStore = create<WordStore>()(
       },
     }),
     {
-      name: "oxford-4999-storage",
+      name: "oxford-5000-storage",
       partialize: (state) => ({
         words: state.words,
         selectedLevel: state.selectedLevel,
