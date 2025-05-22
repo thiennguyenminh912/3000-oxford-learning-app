@@ -23,7 +23,7 @@ export const HomePage = () => {
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">
-        Oxford 5000+ Vocabulary Builder
+        Oxford 4999+ Vocabulary Builder
       </h1>
 
       <div className="card mb-8">
@@ -145,7 +145,7 @@ export const HomePage = () => {
             <div>
               <h3 className="text-lg font-semibold mb-1">Browse Words</h3>
               <p className="text-gray-600">
-                Explore all 5000+ Oxford words by level or category
+                Explore all 4999+ Oxford words by level or category
               </p>
             </div>
           </div>

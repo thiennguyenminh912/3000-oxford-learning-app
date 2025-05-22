@@ -45,7 +45,7 @@ export const WordsListPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Oxford 5000+ Words List</h1>
+      <h1 className="text-2xl font-bold mb-6">Oxford 4999+ Words List</h1>
 
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

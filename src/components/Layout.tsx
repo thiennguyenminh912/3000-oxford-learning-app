@@ -15,7 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-lg font-bold text-blue-600">Oxford 5000+</h1>
+          <h1 className="text-lg font-bold text-blue-600">Oxford 4999+</h1>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-6">
