@@ -373,7 +373,7 @@ export const WordsListPage = () => {
                       >
                         <div
                           className="text-sm text-gray-600 italic max-w-xs"
-                          title={word.example}
+                          title={word.example as string}
                         >
                           "{word.example}"
                         </div>

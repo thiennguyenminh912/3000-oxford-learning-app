@@ -9,7 +9,7 @@ export interface WordData {
     uk?: string;
   };
   encounters?: number;
-  status?: "new" | "learning" | "known" | "skipped";
+  status?: "new" | "learning" | "known" | "skipped" | "focus";
   lastSeen?: string;
   vn_meaning?: string;
   eng_explanation?: string;

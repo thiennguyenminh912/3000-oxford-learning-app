@@ -197,7 +197,7 @@ export const useWordStore = create<WordStore>()(
           // Level filter
           const levelMatch =
             selectedLearningLevels.length === 0 ||
-            selectedLearningLevels.includes(word.level);
+            selectedLearningLevels.includes(word.level as string);
 
           // Status filter
           const statusMatch =
