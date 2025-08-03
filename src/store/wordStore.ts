@@ -9,16 +9,21 @@ interface WordStore {
   words: WordData[];
   levels: string[];
   selectedLevel: string | null;
+  selectedLearningLevels: string[]; // Multiple select for learning filter
+  selectedLearningStatuses: string[]; // Multiple select for learning status filter
   searchTerm: string;
   selectedStatus: string | null;
   definitionCache: Record<string, WordDefinition>;
   quizCache: Record<string, QuizQuestion>;
   isDataLoaded: boolean;
   reviewQueue: string[]; // Queue of words to review later
-
+  sessionLength: number;
+  useSmart: boolean;
   // Actions
   loadWords: () => void;
   setSelectedLevel: (level: string | null) => void;
+  setSelectedLearningLevels: (levels: string[]) => void;
+  setSelectedLearningStatuses: (statuses: string[]) => void;
   setSelectedStatus: (status: string | null) => void;
   setSearchTerm: (term: string) => void;
   updateWordStatus: (wordId: string, status: WordData["status"]) => void;
@@ -43,6 +48,8 @@ interface WordStore {
   getCachedDefinition: (word: string) => WordDefinition | undefined;
   cacheQuizQuestion: (word: string, quiz: QuizQuestion) => void;
   getCachedQuizQuestion: (word: string) => QuizQuestion | undefined;
+  setSessionLength: (length: number) => void;
+  setUseSmart: (useSmart: boolean) => void;
 }
 
 export const useWordStore = create<WordStore>()(
@@ -51,13 +58,16 @@ export const useWordStore = create<WordStore>()(
       words: [],
       levels: ["A1", "A2", "B1", "B2", "C1", "C2"],
       selectedLevel: null,
+      selectedLearningLevels: [], // Multiple select for learning filter
+      selectedLearningStatuses: [], // Multiple select for learning status filter
       selectedStatus: null,
       searchTerm: "",
       definitionCache: {},
       quizCache: {},
       isDataLoaded: false,
       reviewQueue: [],
-
+      sessionLength: 20,
+      useSmart: true,
       loadWords: () => {
         if (get().words.length === 0) {
           const { words, levels } = processWordData();
@@ -69,6 +79,14 @@ export const useWordStore = create<WordStore>()(
 
       setSelectedLevel: (level) => {
         set({ selectedLevel: level });
+      },
+
+      setSelectedLearningLevels: (levels) => {
+        set({ selectedLearningLevels: levels });
+      },
+
+      setSelectedLearningStatuses: (statuses) => {
+        set({ selectedLearningStatuses: statuses });
       },
 
       setSelectedStatus: (status) => {
@@ -167,12 +185,26 @@ export const useWordStore = create<WordStore>()(
 
       // Triển khai thuật toán thông minh chọn từ
       getSmartLearningWords: (sessionLength) => {
-        const { words, selectedLevel, reviewQueue } = get();
+        const {
+          words,
+          selectedLearningLevels,
+          selectedLearningStatuses,
+          reviewQueue,
+        } = get();
 
-        // Lọc danh sách từ theo level nếu đã chọn
+        // Lọc danh sách từ theo learning levels và statuses nếu đã chọn
         const filteredWords = words.filter((word) => {
-          const levelMatch = !selectedLevel || word.level === selectedLevel;
-          return levelMatch;
+          // Level filter
+          const levelMatch =
+            selectedLearningLevels.length === 0 ||
+            selectedLearningLevels.includes(word.level);
+
+          // Status filter
+          const statusMatch =
+            selectedLearningStatuses.length === 0 ||
+            selectedLearningStatuses.includes(word.status || "new");
+
+          return levelMatch && statusMatch;
         });
 
         // Chia thành các nhóm: từ mới, từ cần ôn tập, từ đã biết
@@ -182,6 +214,7 @@ export const useWordStore = create<WordStore>()(
         const learningWords = filteredWords.filter(
           (w) => w.status === "learning"
         );
+        const focusWords = filteredWords.filter((w) => w.status === "focus");
 
         // Tìm những từ cần ôn tập trong hàng đợi
         const reviewWords = reviewQueue
@@ -197,9 +230,11 @@ export const useWordStore = create<WordStore>()(
         // Tạo danh sách từ cho phiên học này
         const sessionWords: WordData[] = [];
 
-        // Tính tỉ lệ: 60% từ mới, 40% từ ôn tập
-        const newWordsCount = Math.ceil(sessionLength * 0.6);
-        const reviewWordsCount = sessionLength - newWordsCount;
+        // Tính tỉ lệ: 50% từ mới, 30% từ focus, 20% từ ôn tập
+        const newWordsCount = Math.ceil(sessionLength * 0.5);
+        const focusWordsCount = Math.ceil(sessionLength * 0.3);
+        const reviewWordsCount =
+          sessionLength - newWordsCount - focusWordsCount;
 
         // Thêm từ mới vào, chọn ngẫu nhiên
         const shuffledNewWords = [...newWords].sort(() => Math.random() - 0.5);
@@ -209,6 +244,24 @@ export const useWordStore = create<WordStore>()(
           i++
         ) {
           sessionWords.push(shuffledNewWords[i]);
+        }
+
+        // Thêm từ focus vào
+        const shuffledFocusWords = [...focusWords].sort(
+          () => Math.random() - 0.5
+        );
+        for (
+          let i = 0;
+          i < Math.min(focusWordsCount, shuffledFocusWords.length);
+          i++
+        ) {
+          if (
+            !sessionWords.some(
+              (word) => word.word === shuffledFocusWords[i].word
+            )
+          ) {
+            sessionWords.push(shuffledFocusWords[i]);
+          }
         }
 
         // Thêm từ cần ôn tập vào
@@ -325,17 +378,29 @@ export const useWordStore = create<WordStore>()(
       getCachedQuizQuestion: (word) => {
         return get().quizCache[word];
       },
+
+      setSessionLength: (length) => {
+        set({ sessionLength: length });
+      },
+
+      setUseSmart: (useSmart) => {
+        set({ useSmart });
+      },
     }),
     {
       name: "oxford-5000-storage",
       partialize: (state) => ({
         words: state.words,
         selectedLevel: state.selectedLevel,
+        selectedLearningLevels: state.selectedLearningLevels,
+        selectedLearningStatuses: state.selectedLearningStatuses,
         selectedStatus: state.selectedStatus,
         definitionCache: state.definitionCache,
         quizCache: state.quizCache,
         levels: state.levels,
         reviewQueue: state.reviewQueue,
+        sessionLength: state.sessionLength,
+        useSmart: state.useSmart,
       }),
     }
   )

@@ -20,16 +20,17 @@ export const LearnPage = () => {
     incrementEncounters,
     updateWordStatus,
     addToReviewQueue,
-    selectedLevel,
+    selectedLearningLevels,
+    selectedLearningStatuses,
+    sessionLength,
+    useSmart,
   } = useWordStore();
 
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [learningMode, setLearningMode] = useState<LearningMode>("flashcard");
   const [availableWords, setAvailableWords] = useState<WordData[]>([]);
   const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [sessionLength, setSessionLength] = useState(20);
   const [isPreloading, setIsPreloading] = useState(false);
-  const [useSmart, setUseSmart] = useState(true); // Mặc định sử dụng chế độ thông minh
   const previousWordIndexRef = useRef<number>(0);
   const previousModeRef = useRef<LearningMode>("flashcard");
   const lastSpeakTimeRef = useRef<number>(0);
@@ -144,7 +145,8 @@ export const LearnPage = () => {
     getFilteredWords,
     getSmartLearningWords,
     sessionLength,
-    selectedLevel,
+    selectedLearningLevels,
+    selectedLearningStatuses,
     useSmart,
   ]);
 
@@ -264,16 +266,6 @@ export const LearnPage = () => {
     sessionLength,
     isPreloading,
   ]);
-
-  const handleSessionLengthChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setSessionLength(Number(e.target.value));
-  };
-
-  const toggleLearningMode = () => {
-    setUseSmart((prev) => !prev);
-  };
 
   const handleModeChange = (mode: LearningMode) => {
     // Chỉ cập nhật nếu mode thay đổi
@@ -556,52 +548,6 @@ export const LearnPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
-          <div>
-            <label
-              htmlFor="session-length"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Session Length (words)
-            </label>
-            <input
-              id="session-length"
-              type="number"
-              min="1"
-              max="50"
-              className="input w-full"
-              value={sessionLength}
-              onChange={handleSessionLengthChange}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
-            Smart Learning
-          </span>
-          <button
-            onClick={toggleLearningMode}
-            className={`relative inline-flex items-center h-6 rounded-full w-11 ${
-              useSmart ? "bg-blue-600" : "bg-gray-300"
-            }`}
-          >
-            <span className="sr-only">Toggle Smart Learning</span>
-            <span
-              className={`${
-                useSmart ? "translate-x-6" : "translate-x-1"
-              } inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out`}
-            />
-          </button>
-        </div>
-        <p className="text-xs text-gray-500 mb-4">
-          {useSmart
-            ? "Smart mode: mixes new words and words that need review to help you remember better."
-            : "Traditional mode: words are sorted by encounter count."}
-        </p>
-      </div>
-
       <div className="flex flex-wrap justify-center gap-3 mb-6">
         <button
           onClick={() => handleModeChange("flashcard")}

@@ -45,6 +45,21 @@ export const Flashcard: React.FC<FlashcardProps> = ({
     const fetchDefinition = async () => {
       if (!word) return;
 
+      console.log("word", word);
+
+      // Kiểm tra xem word object có sẵn các field cần thiết không
+      if (word.vn_meaning && word.eng_explanation && word.example) {
+        // Nếu có sẵn trong JSON, sử dụng trực tiếp
+        setDefinition({
+          englishDefinition: word.eng_explanation,
+          vietnameseDefinition: word.vn_meaning,
+          examples: Array.isArray(word.example) ? word.example : [word.example],
+        });
+        setIsFromCache(false);
+        setIsLoading(false);
+        return;
+      }
+
       // Kiểm tra cache trước
       const wordStore = useWordStore.getState();
       const cachedDefinition = wordStore.getCachedDefinition(word.word);
@@ -113,7 +128,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
-      <div className="w-full aspect-[3/2] relative">
+      <div className="w-full aspect-[2/2] relative">
         <MotionDiv
           className="absolute inset-0 w-full h-full rounded-xl"
           animate={{ rotateY: isFlipped ? 180 : 0 }}

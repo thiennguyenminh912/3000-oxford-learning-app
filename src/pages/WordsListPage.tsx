@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useWordStore } from "../store/wordStore";
 import type { WordData } from "../utils/wordUtils";
 import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
+import { WordDetailPopup } from "../components/WordDetailPopup";
 
 export const WordsListPage = () => {
   const {
@@ -13,11 +14,17 @@ export const WordsListPage = () => {
     setSelectedLevel,
     setSelectedStatus,
     setSearchTerm,
+    words,
   } = useWordStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [displayWords, setDisplayWords] = useState<WordData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [revealedMeanings, setRevealedMeanings] = useState<Set<string>>(
+    new Set()
+  );
+  const [selectedWord, setSelectedWord] = useState<WordData | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
   const wordsPerPage = 20;
 
   // Status options for filtering
@@ -25,8 +32,45 @@ export const WordsListPage = () => {
     { value: null, label: "All Statuses" },
     { value: "new", label: "New" },
     { value: "learning", label: "Learning" },
+    { value: "focus", label: "Focus" },
     { value: "known", label: "Known" },
   ];
+
+  // Get color based on word status
+  const getWordColor = (status: string | undefined) => {
+    switch (status) {
+      case "new":
+        return "text-gray-600"; // Gray for new words
+      case "learning":
+        return "text-blue-600"; // Blue for learning words
+      case "focus":
+        return "text-purple-600"; // Purple for focus words
+      case "known":
+        return "text-green-600"; // Green for known words
+      case "skipped":
+        return "text-red-600"; // Red for skipped words
+      default:
+        return "text-gray-600"; // Default gray
+    }
+  };
+
+  // Get background color based on word status
+  const getWordBgColor = (status: string | undefined) => {
+    switch (status) {
+      case "new":
+        return "bg-gray-50"; // Light gray background
+      case "learning":
+        return "bg-blue-50"; // Light blue background
+      case "focus":
+        return "bg-purple-50"; // Light purple background
+      case "known":
+        return "bg-green-50"; // Light green background
+      case "skipped":
+        return "bg-red-50"; // Light red background
+      default:
+        return "bg-white"; // Default white
+    }
+  };
 
   useEffect(() => {
     // Update search term in store when local search query changes
@@ -42,6 +86,7 @@ export const WordsListPage = () => {
     selectedLevel,
     selectedStatus,
     setSearchTerm,
+    words, // Add words dependency to re-run when words change
   ]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,6 +95,11 @@ export const WordsListPage = () => {
 
   const handleStatusChange = (wordId: string, status: WordData["status"]) => {
     updateWordStatus(wordId, status);
+
+    // Update displayWords immediately to reflect the change
+    setDisplayWords((prev) =>
+      prev.map((word) => (word.word === wordId ? { ...word, status } : word))
+    );
   };
 
   const handleLevelFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -66,11 +116,34 @@ export const WordsListPage = () => {
     } else if (
       value === "new" ||
       value === "learning" ||
+      value === "focus" ||
       value === "known" ||
       value === "skipped"
     ) {
       setSelectedStatus(value);
     }
+  };
+
+  const toggleMeaning = (wordId: string) => {
+    setRevealedMeanings((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(wordId)) {
+        newSet.delete(wordId);
+      } else {
+        newSet.add(wordId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleWordClick = (word: WordData) => {
+    setSelectedWord(word);
+    setIsPopupOpen(true);
+  };
+
+  const closePopup = () => {
+    setIsPopupOpen(false);
+    setSelectedWord(null);
   };
 
   // Pagination
@@ -85,7 +158,7 @@ export const WordsListPage = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* Search Input */}
@@ -184,21 +257,50 @@ export const WordsListPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  {/* Word - Always visible */}
                   <th
                     scope="col"
-                    className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]"
                   >
                     Word
                   </th>
+
+                  {/* Vietnamese Meaning - Always visible */}
                   <th
                     scope="col"
-                    className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]"
+                  >
+                    Vietnamese
+                  </th>
+
+                  {/* English Explanation - Always visible */}
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]  hidden lg:table-cell"
+                  >
+                    English Explanation
+                  </th>
+
+                  {/* Example - Desktop only */}
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px] hidden xl:table-cell"
+                  >
+                    Example
+                  </th>
+
+                  {/* Progress - Always visible */}
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] hidden lg:table-cell"
                   >
                     Progress
                   </th>
+
+                  {/* Status - Always visible */}
                   <th
                     scope="col"
-                    className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]"
                   >
                     Status
                   </th>
@@ -207,9 +309,20 @@ export const WordsListPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentWords.length > 0 ? (
                   currentWords.map((word, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-1 py-3 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">
+                    <tr
+                      key={index}
+                      className={`hover:bg-gray-50 ${getWordBgColor(
+                        word.status
+                      )}`}
+                    >
+                      {/* Word */}
+                      <td
+                        className="px-3 py-4 whitespace-nowrap cursor-pointer"
+                        onClick={() => handleWordClick(word)}
+                      >
+                        <div
+                          className={`font-medium ${getWordColor(word.status)}`}
+                        >
                           {word.word}
                         </div>
                         {word.phonetics && (
@@ -218,7 +331,59 @@ export const WordsListPage = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-1 py-3 whitespace-nowrap">
+
+                      {/* Vietnamese Meaning */}
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMeaning(word.word);
+                          }}
+                          className="text-left w-full hover:text-blue-600 transition-colors"
+                        >
+                          {revealedMeanings.has(word.word) ? (
+                            <span className="text-sm text-gray-700">
+                              {word.vn_meaning}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">
+                              *** Detail ***
+                            </span>
+                          )}
+                        </button>
+                      </td>
+
+                      {/* English Explanation */}
+                      <td
+                        className="px-3 py-4 cursor-pointer hidden lg:table-cell"
+                        onClick={() => handleWordClick(word)}
+                      >
+                        <div
+                          className="text-sm text-gray-700 max-w-xs"
+                          title={word.eng_explanation}
+                        >
+                          {word.eng_explanation}
+                        </div>
+                      </td>
+
+                      {/* Example */}
+                      <td
+                        className="px-3 py-4 hidden xl:table-cell cursor-pointer"
+                        onClick={() => handleWordClick(word)}
+                      >
+                        <div
+                          className="text-sm text-gray-600 italic max-w-xs"
+                          title={word.example}
+                        >
+                          "{word.example}"
+                        </div>
+                      </td>
+
+                      {/* Progress */}
+                      <td
+                        className="px-3 py-4 whitespace-nowrap hidden lg:table-cell cursor-pointer"
+                        onClick={() => handleWordClick(word)}
+                      >
                         <div className="flex items-center">
                           <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
                             <div
@@ -238,19 +403,23 @@ export const WordsListPage = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-1 py-3 whitespace-nowrap">
+
+                      {/* Status */}
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <select
                           className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                           value={word.status || "new"}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            e.stopPropagation();
                             handleStatusChange(
                               word.word,
                               e.target.value as WordData["status"]
-                            )
-                          }
+                            );
+                          }}
                         >
                           <option value="new">New</option>
                           <option value="learning">Learning</option>
+                          <option value="focus">Focus</option>
                           <option value="known">Known</option>
                           <option value="skipped">Skip</option>
                         </select>
@@ -260,7 +429,7 @@ export const WordsListPage = () => {
                 ) : (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       No words match your filters.
@@ -300,6 +469,15 @@ export const WordsListPage = () => {
           </div>
         )}
       </div>
+
+      {/* Word Detail Popup */}
+      {selectedWord && (
+        <WordDetailPopup
+          word={selectedWord}
+          isOpen={isPopupOpen}
+          onClose={closePopup}
+        />
+      )}
     </div>
   );
 };

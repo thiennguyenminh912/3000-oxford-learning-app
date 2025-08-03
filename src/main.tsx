@@ -7,7 +7,7 @@ import { registerSW } from "virtual:pwa-register";
 // Register service worker
 const updateSW = registerSW({
   onNeedRefresh() {
-    if (confirm("New content available. Reload?")) {
+    if (window.confirm("New content available. Reload?")) {
       updateSW(true);
     }
   },

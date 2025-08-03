@@ -11,6 +11,9 @@ export interface WordData {
   encounters?: number;
   status?: "new" | "learning" | "known" | "skipped";
   lastSeen?: string;
+  vn_meaning?: string;
+  eng_explanation?: string;
+  example?: string | string[];
 }
 
 export interface ProcessedData {
