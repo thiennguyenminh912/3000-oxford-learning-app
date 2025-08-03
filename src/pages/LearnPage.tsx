@@ -548,7 +548,7 @@ export const LearnPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex flex-wrap justify-center gap-3 mb-6">
+      <div className="flex flex-wrap justify-center gap-3 mb-2">
         <button
           onClick={() => handleModeChange("flashcard")}
           className={`btn ${

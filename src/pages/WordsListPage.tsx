@@ -1,8 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWordStore } from "../store/wordStore";
 import type { WordData } from "../utils/wordUtils";
 import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 import { WordDetailPopup } from "../components/WordDetailPopup";
+
+// Debounce hook
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 export const WordsListPage = () => {
   const {
@@ -25,7 +42,11 @@ export const WordsListPage = () => {
   );
   const [selectedWord, setSelectedWord] = useState<WordData | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const wordsPerPage = 20;
+
+  // Debounce search query with 300ms delay
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Status options for filtering
   const statusOptions = [
@@ -73,15 +94,15 @@ export const WordsListPage = () => {
   };
 
   useEffect(() => {
-    // Update search term in store when local search query changes
-    setSearchTerm(searchQuery);
+    // Update search term in store when debounced search query changes
+    setSearchTerm(debouncedSearchQuery);
 
     // Get filtered words based on current filters
     const filteredWords = getFilteredWords();
     setDisplayWords(filteredWords);
     setCurrentPage(1);
   }, [
-    searchQuery,
+    debouncedSearchQuery,
     getFilteredWords,
     selectedLevel,
     selectedStatus,
@@ -93,14 +114,17 @@ export const WordsListPage = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleStatusChange = (wordId: string, status: WordData["status"]) => {
-    updateWordStatus(wordId, status);
+  const handleStatusChange = useCallback(
+    (wordId: string, status: WordData["status"]) => {
+      updateWordStatus(wordId, status);
 
-    // Update displayWords immediately to reflect the change
-    setDisplayWords((prev) =>
-      prev.map((word) => (word.word === wordId ? { ...word, status } : word))
-    );
-  };
+      // Update displayWords immediately to reflect the change
+      setDisplayWords((prev) =>
+        prev.map((word) => (word.word === wordId ? { ...word, status } : word))
+      );
+    },
+    [updateWordStatus]
+  );
 
   const handleLevelFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -146,6 +170,10 @@ export const WordsListPage = () => {
     setSelectedWord(null);
   };
 
+  const toggleMobileFilters = () => {
+    setShowMobileFilters(!showMobileFilters);
+  };
+
   // Pagination
   const totalPages = Math.ceil(displayWords.length / wordsPerPage);
   const indexOfLastWord = currentPage * wordsPerPage;
@@ -159,43 +187,75 @@ export const WordsListPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* Search Input */}
-          <div>
-            <label
-              htmlFor="search"
-              className="block text-sm font-medium text-gray-700 mb-1"
+      <div className="bg-white rounded-lg shadow-lg p-1 mb-6">
+        {/* Mobile Filter Toggle */}
+        <div className="md:hidden mb-4">
+          <button
+            onClick={toggleMobileFilters}
+            className="flex items-center justify-between w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">
+              {showMobileFilters ? "Hide Filters" : "Show More Filters"}
+            </span>
+            <svg
+              className={`h-5 w-5 text-gray-500 transition-transform ${
+                showMobileFilters ? "rotate-180" : ""
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              Search Words
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-5 w-5 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                id="search"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Search words..."
-                value={searchQuery}
-                onChange={handleSearchChange}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
               />
-            </div>
-          </div>
+            </svg>
+          </button>
+        </div>
 
+        {/* Search Input - Always visible on mobile */}
+        <div className="mb-4 md:mb-0">
+          <label
+            htmlFor="search"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Search Words
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                className="h-5 w-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="search"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search words..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </div>
+        </div>
+
+        {/* Additional Filters - Hidden on mobile by default */}
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 ${
+            showMobileFilters ? "block" : "hidden md:grid"
+          }`}
+        >
           {/* Level Filter */}
           <div>
             <label
@@ -248,7 +308,7 @@ export const WordsListPage = () => {
           {displayWords.length === 1 ? "word" : "words"}
           {selectedLevel && ` in level ${selectedLevel}`}
           {selectedStatus && ` with status "${selectedStatus}"`}
-          {searchQuery && ` matching "${searchQuery}"`}
+          {debouncedSearchQuery && ` matching "${debouncedSearchQuery}"`}
         </div>
 
         {/* Word List */}
