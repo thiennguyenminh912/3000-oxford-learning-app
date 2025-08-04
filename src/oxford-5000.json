@@ -1,17 +1,5 @@
 [
   {
-    "word": "a",
-    "level": "A1",
-    "type": "indefinite article",
-    "phonetics": {
-      "us": "/eɪ/",
-      "uk": "/eɪ/"
-    },
-    "vn_meaning": "một, một số lượng",
-    "eng_explanation": "It indicates a singular or non-specific quantity.",
-    "example": ["I need a book.", "She is a talented singer."]
-  },
-  {
     "word": "abandon",
     "level": "B2",
     "type": "verb",
