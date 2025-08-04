@@ -393,7 +393,7 @@ export const WordsListPage = () => {
                       </td>
 
                       {/* Vietnamese Meaning */}
-                      <td className="px-3 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -433,10 +433,12 @@ export const WordsListPage = () => {
                       >
                         <div
                           className="text-sm text-gray-600 italic max-w-xs"
-                          title={word.example as string}
-                        >
-                          "{word.example}"
-                        </div>
+                          dangerouslySetInnerHTML={{
+                            __html: Array.isArray(word.example)
+                              ? `· ${word.example.join("<br />· ")}`
+                              : word.example || "",
+                          }}
+                        />
                       </td>
 
                       {/* Progress */}
