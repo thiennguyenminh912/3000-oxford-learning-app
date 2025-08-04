@@ -219,7 +219,7 @@ export const useVoices = () => {
       // Set speech parameters for better quality
       utterance.volume = 1.0;
       // Slightly slower on iOS for better quality, normal speed elsewhere
-      utterance.rate = isIOSRef.current ? 0.9 : 1.0;
+      utterance.rate = isIOSRef.current ? 0.7 : 0.8;
       utterance.pitch = 1.0;
 
       console.log(
