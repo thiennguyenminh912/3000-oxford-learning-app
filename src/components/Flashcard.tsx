@@ -238,6 +238,14 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                       {definition.vietnameseDefinition}
                     </p>
                   </div>
+
+                  {/* Note Section */}
+                  {word.note && (
+                    <div className="mt-4 border-t pt-3">
+                      <p className="text-sm text-gray-600 mb-1">Note:</p>
+                      <p className="text-gray-700 italic">{word.note}</p>
+                    </div>
+                  )}
                 </div>
               </>
             )}

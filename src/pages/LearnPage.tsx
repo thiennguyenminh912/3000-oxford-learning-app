@@ -150,6 +150,30 @@ export const LearnPage = () => {
     useSmart,
   ]);
 
+  // Force reload words when custom words might be added
+  useEffect(() => {
+    // Reload words every 5 seconds to catch new custom words
+    const interval = setInterval(() => {
+      if (useSmart) {
+        const smartWords = getSmartLearningWords(sessionLength);
+        setAvailableWords(smartWords);
+      } else {
+        const words = getFilteredWords()
+          .filter(
+            (word) => word.status !== "known" && word.status !== "skipped"
+          )
+          .sort((a, b) => {
+            const aEncounters = a.encounters || 0;
+            const bEncounters = b.encounters || 0;
+            return aEncounters - bEncounters;
+          });
+        setAvailableWords(words);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [getFilteredWords, getSmartLearningWords, sessionLength, useSmart]);
+
   // Khi danh sách từ được cập nhật, bắt đầu preload toàn bộ session
   useEffect(() => {
     if (availableWords.length > 0 && !sessionCompleted) {
@@ -180,7 +204,7 @@ export const LearnPage = () => {
       availableWords.length > 0
     ) {
       const currentWord = availableWords[currentWordIndex];
-      if (currentWord) {
+      if (currentWord && learningMode !== "quiz") {
         // Hủy bỏ âm thanh đang phát nếu có
         stopSpeaking();
 

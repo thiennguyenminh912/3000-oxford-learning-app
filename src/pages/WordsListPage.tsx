@@ -1,8 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWordStore } from "../store/wordStore";
 import type { WordData } from "../utils/wordUtils";
-import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
+import {
+  getCustomWords,
+  saveCustomWord,
+  updateCustomWordNote,
+  saveWordNote,
+} from "../utils/wordUtils";
 import { WordDetailPopup } from "../components/WordDetailPopup";
+import { AddWordModal } from "../components/AddWordModal";
+import { REQUIRED_WORD_ENCOUNTERS } from "../utils/constants";
 
 // Debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -43,10 +50,20 @@ export const WordsListPage = () => {
   const [selectedWord, setSelectedWord] = useState<WordData | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [isAddWordModalOpen, setIsAddWordModalOpen] = useState(false);
+  const [customWords, setCustomWords] = useState<WordData[]>([]);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState("");
   const wordsPerPage = 20;
 
   // Debounce search query with 300ms delay
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Load custom words from localStorage
+  useEffect(() => {
+    const customWordsData = getCustomWords();
+    setCustomWords(customWordsData);
+  }, []);
 
   // Status options for filtering
   const statusOptions = [
@@ -99,7 +116,17 @@ export const WordsListPage = () => {
 
     // Get filtered words based on current filters
     const filteredWords = getFilteredWords();
-    setDisplayWords(filteredWords);
+
+    // Combine with custom words
+    const allWords = [...filteredWords, ...customWords];
+
+    // Remove duplicates (custom words take precedence)
+    const uniqueWords = allWords.filter(
+      (word, index, self) =>
+        index === self.findIndex((w) => w.word === word.word)
+    );
+
+    setDisplayWords(uniqueWords);
     setCurrentPage(1);
   }, [
     debouncedSearchQuery,
@@ -107,7 +134,8 @@ export const WordsListPage = () => {
     selectedLevel,
     selectedStatus,
     setSearchTerm,
-    words, // Add words dependency to re-run when words change
+    words,
+    customWords,
   ]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,6 +202,65 @@ export const WordsListPage = () => {
     setShowMobileFilters(!showMobileFilters);
   };
 
+  const handleAddWord = (newWord: WordData) => {
+    saveCustomWord(newWord);
+    setCustomWords((prev) => [...prev, newWord]);
+
+    // Reload wordStore to include the new custom word
+    const wordStore = useWordStore.getState();
+    wordStore.loadWords();
+  };
+
+  const openAddWordModal = () => {
+    setIsAddWordModalOpen(true);
+  };
+
+  const closeAddWordModal = () => {
+    setIsAddWordModalOpen(false);
+  };
+
+  // Note editing functions
+  const startEditingNote = (wordId: string, currentNote: string) => {
+    setEditingNote(wordId);
+    setEditingNoteValue(currentNote || "");
+  };
+
+  const saveNote = (wordId: string) => {
+    // Save note for all words using the new system
+    saveWordNote(wordId, editingNoteValue);
+
+    // Update custom word note if it's a custom word
+    if (customWords.some((w) => w.word === wordId)) {
+      updateCustomWordNote(wordId, editingNoteValue);
+
+      // Update local state for custom words
+      setCustomWords((prev) =>
+        prev.map((word) =>
+          word.word === wordId ? { ...word, note: editingNoteValue } : word
+        )
+      );
+    }
+
+    // Update display words to reflect the change
+    setDisplayWords((prev) =>
+      prev.map((word) =>
+        word.word === wordId ? { ...word, note: editingNoteValue } : word
+      )
+    );
+
+    // Reload wordStore to update notes
+    const wordStore = useWordStore.getState();
+    wordStore.loadWords();
+
+    setEditingNote(null);
+    setEditingNoteValue("");
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNote(null);
+    setEditingNoteValue("");
+  };
+
   // Pagination
   const totalPages = Math.ceil(displayWords.length / wordsPerPage);
   const indexOfLastWord = currentPage * wordsPerPage;
@@ -186,7 +273,30 @@ export const WordsListPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-8xl mx-auto">
+      {/* Desktop Add Button - Top Right */}
+      <div className="hidden md:block absolute top-20 right-4 z-30 mr-10">
+        <button
+          onClick={openAddWordModal}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Add Word
+        </button>
+      </div>
+
       <div className="bg-white rounded-lg shadow-lg p-1 mb-6">
         {/* Mobile Filter Toggle */}
         <div className="md:hidden mb-4">
@@ -349,6 +459,14 @@ export const WordsListPage = () => {
                     Example
                   </th>
 
+                  {/* Note - Desktop only */}
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] hidden xl:table-cell"
+                  >
+                    Note
+                  </th>
+
                   {/* Progress - Always visible */}
                   <th
                     scope="col"
@@ -384,6 +502,11 @@ export const WordsListPage = () => {
                           className={`font-medium ${getWordColor(word.status)}`}
                         >
                           {word.word}
+                          {word.type === "custom" && (
+                            <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                              Custom
+                            </span>
+                          )}
                         </div>
                         {word.phonetics && (
                           <div className="text-xs text-gray-500">
@@ -441,6 +564,81 @@ export const WordsListPage = () => {
                         />
                       </td>
 
+                      {/* Note */}
+                      <td className="px-3 py-4 hidden xl:table-cell">
+                        {editingNote === word.word ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editingNoteValue}
+                              onChange={(e) =>
+                                setEditingNoteValue(e.target.value)
+                              }
+                              className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  saveNote(word.word);
+                                } else if (e.key === "Escape") {
+                                  cancelEditingNote();
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => saveNote(word.word)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={cancelEditingNote}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            className="text-sm text-gray-600 max-w-xs cursor-pointer hover:bg-gray-100 p-1 rounded"
+                            onClick={() =>
+                              startEditingNote(word.word, word.note || "")
+                            }
+                          >
+                            {word.note ? (
+                              <span className="text-gray-700">{word.note}</span>
+                            ) : (
+                              <span className="text-gray-400 italic">
+                                Click to add note
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
                       {/* Progress */}
                       <td
                         className="px-3 py-4 whitespace-nowrap hidden lg:table-cell cursor-pointer"
@@ -491,7 +689,7 @@ export const WordsListPage = () => {
                 ) : (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       No words match your filters.
@@ -532,6 +730,28 @@ export const WordsListPage = () => {
         )}
       </div>
 
+      {/* Mobile Add Button - Bottom Right */}
+      <div className="md:hidden fixed bottom-20 right-6 z-40">
+        <button
+          onClick={openAddWordModal}
+          className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
+
       {/* Word Detail Popup */}
       {selectedWord && (
         <WordDetailPopup
@@ -540,6 +760,14 @@ export const WordsListPage = () => {
           onClose={closePopup}
         />
       )}
+
+      {/* Add Word Modal */}
+      <AddWordModal
+        isOpen={isAddWordModalOpen}
+        onClose={closeAddWordModal}
+        onAddWord={handleAddWord}
+        initialWord={debouncedSearchQuery}
+      />
     </div>
   );
 };

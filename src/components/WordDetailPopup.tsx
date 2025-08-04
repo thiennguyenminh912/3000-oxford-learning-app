@@ -253,6 +253,14 @@ export const WordDetailPopup: React.FC<WordDetailPopupProps> = ({
                   </div>
                 </div>
 
+                {/* Note Section */}
+                {word.note && (
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <h4 className="font-semibold text-gray-800 mb-1">Note</h4>
+                    <p className="text-gray-700 leading-relaxed">{word.note}</p>
+                  </div>
+                )}
+
                 {/* Progress Section */}
                 <div className="bg-white border rounded-lg p-3">
                   <h4 className="font-semibold text-gray-800 mb-2">
