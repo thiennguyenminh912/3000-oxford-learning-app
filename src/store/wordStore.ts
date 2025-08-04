@@ -54,6 +54,7 @@ interface WordStore {
   getCachedQuizQuestion: (word: string) => QuizQuestion | undefined;
   setSessionLength: (length: number) => void;
   setUseSmart: (useSmart: boolean) => void;
+  removeWord: (wordId: string) => void;
 }
 
 export const useWordStore = create<WordStore>()(
@@ -356,6 +357,31 @@ export const useWordStore = create<WordStore>()(
 
       setUseSmart: (useSmart) => {
         set({ useSmart });
+      },
+
+      removeWord: (wordId) => {
+        set((state) => ({
+          words: state.words.filter((word) => word.word !== wordId),
+        }));
+
+        // Force persist the updated state
+        const currentState = get();
+        localStorage.setItem(
+          "oxford-5000-storage",
+          JSON.stringify({
+            words: currentState.words,
+            selectedLevel: currentState.selectedLevel,
+            selectedLearningLevels: currentState.selectedLearningLevels,
+            selectedLearningStatuses: currentState.selectedLearningStatuses,
+            selectedStatus: currentState.selectedStatus,
+            definitionCache: currentState.definitionCache,
+            quizCache: currentState.quizCache,
+            levels: currentState.levels,
+            reviewQueue: currentState.reviewQueue,
+            sessionLength: currentState.sessionLength,
+            useSmart: currentState.useSmart,
+          })
+        );
       },
     }),
     {

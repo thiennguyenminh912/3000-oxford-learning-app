@@ -333,7 +333,6 @@ export const getCustomWords = (): WordData[] => {
     return [];
   }
 };
-
 export const saveCustomWord = (word: WordData): void => {
   try {
     const customWords = getCustomWords();
@@ -358,6 +357,11 @@ export const deleteCustomWord = (wordId: string): void => {
     const customWords = getCustomWords();
     const filteredWords = customWords.filter((w) => w.word !== wordId);
     localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify(filteredWords));
+
+    // Also remove from word notes
+    const notes = getWordNotes();
+    delete notes[wordId];
+    localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(notes));
   } catch (error) {
     console.error("Error deleting custom word:", error);
   }
