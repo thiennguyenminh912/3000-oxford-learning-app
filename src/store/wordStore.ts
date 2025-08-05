@@ -255,38 +255,147 @@ export const useWordStore = create<WordStore>()(
         return filteredWords;
       },
 
-      getSmartLearningWords: (sessionLength: number) => {
+      getSmartLearningWords: (sessionLength) => {
+        const {
+          selectedLearningLevels,
+          selectedLearningStatuses,
+          reviewQueue,
+        } = get();
+
         const state = get();
-        let allWords = [...state.words];
+        const words = [...state.words];
 
-        // Apply learning level filters
-        if (state.selectedLearningLevels.length > 0) {
-          allWords = allWords.filter((word) =>
-            state.selectedLearningLevels.includes(word.level || "")
-          );
-        }
+        console.log("words", words);
 
-        // Apply learning status filters
-        if (state.selectedLearningStatuses.length > 0) {
-          allWords = allWords.filter((word) =>
-            state.selectedLearningStatuses.includes(word.status || "new")
-          );
-        }
+        // Lọc danh sách từ theo learning levels và statuses nếu đã chọn
+        const filteredWords = words.filter((word) => {
+          // Level filter
+          const levelMatch =
+            selectedLearningLevels.length === 0 ||
+            selectedLearningLevels.includes(word.level as string) ||
+            !word.level;
 
-        // Filter out known and skipped words for learning
-        allWords = allWords.filter(
-          (word) => word.status !== "known" && word.status !== "skipped"
-        );
+          // Status filter
+          const statusMatch =
+            selectedLearningStatuses.length === 0 ||
+            selectedLearningStatuses.includes(word.status || "new");
 
-        // Sort by encounters (fewer encounters first)
-        allWords.sort((a, b) => {
-          const aEncounters = a.encounters || 0;
-          const bEncounters = b.encounters || 0;
-          return aEncounters - bEncounters;
+          return levelMatch && statusMatch;
         });
 
-        // Take the first sessionLength words
-        return allWords.slice(0, sessionLength);
+        console.log(
+          "filteredWords",
+          filteredWords?.filter((w) => w.status === "focus")
+        );
+
+        // Chia thành các nhóm: từ mới, từ cần ôn tập, từ đã biết
+        const newWords = filteredWords.filter(
+          (w) => w.status === "new" || !w.status
+        );
+        const learningWords = filteredWords.filter(
+          (w) => w.status === "learning"
+        );
+        const focusWords = filteredWords.filter((w) => w.status === "focus");
+
+        // Tìm những từ cần ôn tập trong hàng đợi
+        const reviewWords = reviewQueue
+          .map((wordId) => filteredWords.find((w) => w.word === wordId))
+          .filter((word): word is WordData => !!word && word.status !== "known")
+          // Sắp xếp theo thời gian, ưu tiên từ chưa xem lâu nhất
+          .sort((a, b) => {
+            const aTime = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+            const bTime = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+            return aTime - bTime;
+          });
+
+        // Tạo danh sách từ cho phiên học này
+        const sessionWords: WordData[] = [];
+
+        // Tính tỉ lệ: 50% từ mới, 30% từ focus, 20% từ ôn tập
+        const newWordsCount = Math.ceil(sessionLength * 0.5);
+        const focusWordsCount = Math.ceil(sessionLength * 0.3);
+        const reviewWordsCount =
+          sessionLength - newWordsCount - focusWordsCount;
+
+        // Thêm từ mới vào, chọn ngẫu nhiên
+        const shuffledNewWords = [...newWords].sort(() => Math.random() - 0.5);
+        for (
+          let i = 0;
+          i < Math.min(newWordsCount, shuffledNewWords.length);
+          i++
+        ) {
+          sessionWords.push(shuffledNewWords[i]);
+        }
+
+        // Thêm từ focus vào
+        const shuffledFocusWords = [...focusWords].sort(
+          () => Math.random() - 0.5
+        );
+        for (
+          let i = 0;
+          i < Math.min(focusWordsCount, shuffledFocusWords.length);
+          i++
+        ) {
+          if (
+            !sessionWords.some(
+              (word) => word.word === shuffledFocusWords[i].word
+            )
+          ) {
+            sessionWords.push(shuffledFocusWords[i]);
+          }
+        }
+
+        // Thêm từ cần ôn tập vào
+        let remainingReviewSlots = reviewWordsCount;
+
+        // Trước tiên lấy từ trong review queue
+        for (
+          let i = 0;
+          i < Math.min(remainingReviewSlots, reviewWords.length);
+          i++
+        ) {
+          if (!sessionWords.some((word) => word.word === reviewWords[i].word)) {
+            sessionWords.push(reviewWords[i]);
+            remainingReviewSlots--;
+          }
+        }
+
+        // Sau đó lấy từ những từ đang học nếu còn slot
+        if (remainingReviewSlots > 0) {
+          const shuffledLearningWords = [...learningWords]
+            .filter((word) => !sessionWords.some((w) => w.word === word.word))
+            .sort(() => Math.random() - 0.5);
+
+          for (
+            let i = 0;
+            i < Math.min(remainingReviewSlots, shuffledLearningWords.length);
+            i++
+          ) {
+            sessionWords.push(shuffledLearningWords[i]);
+          }
+        }
+
+        // Nếu vẫn chưa đủ, bổ sung thêm từ mới
+        if (sessionWords.length < sessionLength) {
+          const remainingNewWords = shuffledNewWords.filter(
+            (word) => !sessionWords.some((w) => w.word === word.word)
+          );
+
+          for (
+            let i = 0;
+            i <
+            Math.min(
+              sessionLength - sessionWords.length,
+              remainingNewWords.length
+            );
+            i++
+          ) {
+            sessionWords.push(remainingNewWords[i]);
+          }
+        }
+
+        // Shuffle lại toàn bộ danh sách từ để không học theo thứ tự cố định
+        return sessionWords.sort(() => Math.random() - 0.5);
       },
 
       getWordStats: () => {
