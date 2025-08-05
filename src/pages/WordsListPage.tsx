@@ -210,6 +210,11 @@ export const WordsListPage = () => {
     // Reload wordStore to include the new custom word
     const wordStore = useWordStore.getState();
     wordStore.loadWords();
+
+    // Reload words in LearnPage if it's open
+    if ((window as any).reloadLearnPageWords) {
+      (window as any).reloadLearnPageWords();
+    }
   };
 
   const openAddWordModal = () => {

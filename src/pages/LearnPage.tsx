@@ -152,27 +152,46 @@ export const LearnPage = () => {
 
   // Force reload words when custom words might be added
   useEffect(() => {
-    // Reload words every 5 seconds to catch new custom words
-    const interval = setInterval(() => {
-      if (useSmart) {
-        const smartWords = getSmartLearningWords(sessionLength);
-        setAvailableWords(smartWords);
-      } else {
-        const words = getFilteredWords()
-          .filter(
-            (word) => word.status !== "known" && word.status !== "skipped"
-          )
-          .sort((a, b) => {
-            const aEncounters = a.encounters || 0;
-            const bEncounters = b.encounters || 0;
-            return aEncounters - bEncounters;
-          });
-        setAvailableWords(words);
-      }
-    }, 5000);
+    // Only reload words when custom words are actually added
+    // Remove the interval that was causing the jumping issue
+    // Instead, we'll rely on the wordStore to handle custom words properly
 
-    return () => clearInterval(interval);
-  }, [getFilteredWords, getSmartLearningWords, sessionLength, useSmart]);
+    // Add a method to reload words when needed (e.g., when custom words are added)
+    const reloadWordsIfNeeded = () => {
+      // Only reload if session is not in progress to avoid jumping
+      if (sessionCompleted || currentWordIndex === 0) {
+        if (useSmart) {
+          const smartWords = getSmartLearningWords(sessionLength);
+          setAvailableWords(smartWords);
+        } else {
+          const words = getFilteredWords()
+            .filter(
+              (word) => word.status !== "known" && word.status !== "skipped"
+            )
+            .sort((a, b) => {
+              const aEncounters = a.encounters || 0;
+              const bEncounters = b.encounters || 0;
+              return aEncounters - bEncounters;
+            });
+          setAvailableWords(words);
+        }
+      }
+    };
+
+    // Expose this method globally so it can be called when custom words are added
+    (window as any).reloadLearnPageWords = reloadWordsIfNeeded;
+
+    return () => {
+      delete (window as any).reloadLearnPageWords;
+    };
+  }, [
+    getFilteredWords,
+    getSmartLearningWords,
+    sessionLength,
+    useSmart,
+    sessionCompleted,
+    currentWordIndex,
+  ]);
 
   // Khi danh sách từ được cập nhật, bắt đầu preload toàn bộ session
   useEffect(() => {
