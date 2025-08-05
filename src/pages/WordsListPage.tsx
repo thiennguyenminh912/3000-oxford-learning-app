@@ -119,7 +119,7 @@ export const WordsListPage = () => {
     const filteredWords = getFilteredWords();
 
     // Combine with custom words
-    const allWords = [...filteredWords, ...customWords];
+    const allWords = [...filteredWords];
 
     // Remove duplicates (custom words take precedence)
     const uniqueWords = allWords.filter(
