@@ -415,3 +415,10 @@ export const deleteWordNote = (wordId: string): void => {
     console.error("Error deleting word note:", error);
   }
 };
+
+export const normalizeNoAccent = (str: string) => {
+  return str
+    .normalize("NFD") // tách glyph + dấu
+    .replace(/[\u0300-\u036f]/g, "") // xoá dấu tổ hợp
+    .toLowerCase();
+};

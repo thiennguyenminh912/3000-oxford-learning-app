@@ -4,6 +4,7 @@ import {
   processWordData,
   getCustomWords,
   getWordNotes,
+  normalizeNoAccent,
 } from "../utils/wordUtils";
 import type { WordData } from "../utils/wordUtils";
 import type { WordDefinition, QuizQuestion } from "../services/apiService";
@@ -246,9 +247,12 @@ export const useWordStore = create<WordStore>()(
           const searchLower = state.searchTerm.toLowerCase();
           filteredWords = filteredWords.filter(
             (word) =>
-              word.word.toLowerCase().includes(searchLower) ||
-              word.vn_meaning?.toLowerCase().includes(searchLower) ||
-              word.eng_explanation?.toLowerCase().includes(searchLower)
+              normalizeNoAccent(word.word).includes(
+                normalizeNoAccent(searchLower)
+              ) ||
+              normalizeNoAccent(word.vn_meaning || "").includes(
+                normalizeNoAccent(searchLower)
+              )
           );
         }
 
@@ -282,11 +286,6 @@ export const useWordStore = create<WordStore>()(
 
           return levelMatch && statusMatch;
         });
-
-        console.log(
-          "filteredWords",
-          filteredWords?.filter((w) => w.status === "focus")
-        );
 
         // Chia thành các nhóm: từ mới, từ cần ôn tập, từ đã biết
         const newWords = filteredWords.filter(
