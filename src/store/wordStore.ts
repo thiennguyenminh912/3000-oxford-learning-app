@@ -84,6 +84,11 @@ export const useWordStore = create<WordStore>()(
           // Load word notes from localStorage
           const wordNotes = getWordNotes();
 
+          // Load last_updated from localStorage
+          const lastUpdated = JSON.parse(
+            localStorage.getItem("word_last_updated") || "{}"
+          );
+
           // Combine words, with custom words taking precedence
           const allWords = [...words, ...customWords];
           const uniqueWords = allWords.filter(
@@ -91,10 +96,11 @@ export const useWordStore = create<WordStore>()(
               index === self.findIndex((w) => w.word === word.word)
           );
 
-          // Merge notes with words
+          // Merge notes and last_updated with words
           const wordsWithNotes = uniqueWords.map((word) => ({
             ...word,
             note: wordNotes[word.word] || word.note,
+            last_updated: lastUpdated[word.word] || word.last_updated,
           }));
 
           set({ words: wordsWithNotes, levels, isDataLoaded: true });
@@ -102,6 +108,9 @@ export const useWordStore = create<WordStore>()(
           // Reload custom words even if words are already loaded
           const customWords = getCustomWords();
           const wordNotes = getWordNotes();
+          const lastUpdated = JSON.parse(
+            localStorage.getItem("word_last_updated") || "{}"
+          );
           const currentWords = get().words;
 
           // Add any new custom words that aren't already in the list
@@ -112,17 +121,19 @@ export const useWordStore = create<WordStore>()(
 
           if (newCustomWords.length > 0) {
             const updatedWords = [...currentWords, ...newCustomWords];
-            // Merge notes with updated words
+            // Merge notes and last_updated with updated words
             const wordsWithNotes = updatedWords.map((word) => ({
               ...word,
               note: wordNotes[word.word] || word.note,
+              last_updated: lastUpdated[word.word] || word.last_updated,
             }));
             set({ words: wordsWithNotes });
           } else {
-            // Update notes for existing words
+            // Update notes and last_updated for existing words
             const wordsWithNotes = currentWords.map((word) => ({
               ...word,
               note: wordNotes[word.word] || word.note,
+              last_updated: lastUpdated[word.word] || word.last_updated,
             }));
             set({ words: wordsWithNotes });
           }
@@ -155,7 +166,12 @@ export const useWordStore = create<WordStore>()(
         set((state) => ({
           words: state.words.map((word) =>
             word.word === wordId
-              ? { ...word, status, lastSeen: new Date().toISOString() }
+              ? {
+                  ...word,
+                  status,
+                  lastSeen: new Date().toISOString(),
+                  last_updated: new Date().toISOString(),
+                }
               : word
           ),
         }));

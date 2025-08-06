@@ -55,6 +55,10 @@ export const WordsListPage = () => {
   const [customWords, setCustomWords] = useState<WordData[]>([]);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [sortField, setSortField] = useState<"word" | "last_updated" | null>(
+    null
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const wordsPerPage = 20;
 
   // Debounce search query with 300ms delay
@@ -65,6 +69,46 @@ export const WordsListPage = () => {
     const customWordsData = getCustomWords();
     setCustomWords(customWordsData);
   }, []);
+
+  // Handle sorting
+  const handleSort = (field: "word" | "last_updated") => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field and default to asc
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Sort words based on current sort settings
+  const sortWords = (words: WordData[]) => {
+    if (!sortField) return words;
+
+    return [...words].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      if (sortField === "word") {
+        aValue = a.word.toLowerCase();
+        bValue = b.word.toLowerCase();
+      } else if (sortField === "last_updated") {
+        aValue = a.last_updated || "";
+        bValue = b.last_updated || "";
+      } else {
+        return 0;
+      }
+
+      if (aValue < bValue) {
+        return sortDirection === "asc" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortDirection === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+  };
 
   // Status options for filtering
   const statusOptions = [
@@ -119,7 +163,7 @@ export const WordsListPage = () => {
     const filteredWords = getFilteredWords();
 
     // Combine with custom words
-    const allWords = [...filteredWords];
+    const allWords = [...filteredWords, ...customWords];
 
     // Remove duplicates (custom words take precedence)
     const uniqueWords = allWords.filter(
@@ -127,7 +171,10 @@ export const WordsListPage = () => {
         index === self.findIndex((w) => w.word === word.word)
     );
 
-    setDisplayWords(uniqueWords);
+    // Apply sorting
+    const sortedWords = sortWords(uniqueWords);
+
+    setDisplayWords(sortedWords);
     setCurrentPage(1);
   }, [
     debouncedSearchQuery,
@@ -137,6 +184,8 @@ export const WordsListPage = () => {
     setSearchTerm,
     words,
     customWords,
+    sortField,
+    sortDirection,
   ]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +198,11 @@ export const WordsListPage = () => {
 
       // Update displayWords immediately to reflect the change
       setDisplayWords((prev) =>
-        prev.map((word) => (word.word === wordId ? { ...word, status } : word))
+        prev.map((word) =>
+          word.word === wordId
+            ? { ...word, status, last_updated: new Date().toISOString() }
+            : word
+        )
       );
     },
     [updateWordStatus]
@@ -250,7 +303,13 @@ export const WordsListPage = () => {
     // Update display words to reflect the change
     setDisplayWords((prev) =>
       prev.map((word) =>
-        word.word === wordId ? { ...word, note: editingNoteValue } : word
+        word.word === wordId
+          ? {
+              ...word,
+              note: editingNoteValue,
+              last_updated: new Date().toISOString(),
+            }
+          : word
       )
     );
 
@@ -454,9 +513,29 @@ export const WordsListPage = () => {
                   {/* Word - Always visible */}
                   <th
                     scope="col"
-                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("word")}
                   >
-                    Word
+                    <div className="flex items-center gap-1">
+                      Word
+                      {sortField === "word" && (
+                        <svg
+                          className={`w-4 h-4 ${
+                            sortDirection === "asc" ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                          />
+                        </svg>
+                      )}
+                    </div>
                   </th>
 
                   {/* Vietnamese Meaning - Always visible */}
@@ -489,6 +568,34 @@ export const WordsListPage = () => {
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] hidden xl:table-cell"
                   >
                     Note
+                  </th>
+
+                  {/* Last Updated - Desktop only */}
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] hidden xl:table-cell cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("last_updated")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Last Updated
+                      {sortField === "last_updated" && (
+                        <svg
+                          className={`w-4 h-4 ${
+                            sortDirection === "asc" ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                          />
+                        </svg>
+                      )}
+                    </div>
                   </th>
 
                   {/* Progress - Always visible */}
@@ -597,7 +704,7 @@ export const WordsListPage = () => {
                       </td>
 
                       {/* Note */}
-                      <td className="px-3 py-4 hidden xl:table-cell">
+                      <td className="px-3 py-4 whitespace-nowrap hidden xl:table-cell">
                         {editingNote === word.word ? (
                           <div className="flex items-center gap-2">
                             <input
@@ -669,6 +776,25 @@ export const WordsListPage = () => {
                             )}
                           </div>
                         )}
+                      </td>
+
+                      {/* Last Updated - Desktop only */}
+                      <td className="px-3 py-4 whitespace-nowrap hidden xl:table-cell">
+                        <div className="text-sm text-gray-600">
+                          {word.last_updated ? (
+                            <span
+                              title={new Date(
+                                word.last_updated
+                              ).toLocaleString()}
+                            >
+                              {new Date(word.last_updated).toLocaleDateString()}
+                              <br />
+                              {new Date(word.last_updated).toLocaleTimeString()}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic">Never</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Progress */}
@@ -755,7 +881,7 @@ export const WordsListPage = () => {
                 ) : (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       No words match your filters.

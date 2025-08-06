@@ -16,6 +16,7 @@ export interface WordData {
   eng_explanation?: string;
   example?: string | string[];
   note?: string;
+  last_updated?: string;
 }
 
 export interface ProcessedData {
@@ -401,6 +402,9 @@ export const saveWordNote = (wordId: string, note: string): void => {
       delete notes[wordId];
     }
     localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(notes));
+
+    // Update last_updated timestamp
+    updateWordLastUpdated(wordId);
   } catch (error) {
     console.error("Error saving word note:", error);
   }
@@ -411,8 +415,46 @@ export const deleteWordNote = (wordId: string): void => {
     const notes = getWordNotes();
     delete notes[wordId];
     localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(notes));
+
+    // Update last_updated timestamp
+    updateWordLastUpdated(wordId);
   } catch (error) {
     console.error("Error deleting word note:", error);
+  }
+};
+
+// Function to update last_updated timestamp for a word
+export const updateWordLastUpdated = (wordId: string): void => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    // Update in word notes
+    const notes = getWordNotes();
+    if (!notes[wordId]) {
+      notes[wordId] = "";
+    }
+
+    // Store last_updated in a separate key for easy access
+    const lastUpdated = JSON.parse(
+      localStorage.getItem("word_last_updated") || "{}"
+    );
+    lastUpdated[wordId] = timestamp;
+    localStorage.setItem("word_last_updated", JSON.stringify(lastUpdated));
+  } catch (error) {
+    console.error("Error updating word last_updated:", error);
+  }
+};
+
+// Function to get last_updated for a word
+export const getWordLastUpdated = (wordId: string): string | null => {
+  try {
+    const lastUpdated = JSON.parse(
+      localStorage.getItem("word_last_updated") || "{}"
+    );
+    return lastUpdated[wordId] || null;
+  } catch (error) {
+    console.error("Error getting word last_updated:", error);
+    return null;
   }
 };
 
